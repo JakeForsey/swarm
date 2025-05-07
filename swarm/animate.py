@@ -18,6 +18,8 @@ from swarm.agents import static_swarm
 from swarm.agents import train_swarm
 from swarm.agents import param_swarm
 from swarm.agents import config_swarm
+from swarm.agents import spiral_swarm
+from swarm.agents import concave_swarm
 from swarm.env import SwarmEnv
 
 
@@ -25,6 +27,9 @@ class SwarmSimulator:
     def __init__(self):
         self.key = jax.random.PRNGKey(0)
         self.env = SwarmEnv(batch_size=2)
+
+        self.agent1 = concave_swarm
+        self.agent2 = vortex_swarm
 
         plt.switch_backend('Agg')
         self.fig, self.ax = plt.subplots(figsize=(8, 8), dpi=80)
@@ -38,10 +43,8 @@ class SwarmSimulator:
     def update(self, frame):
         """Update function for animation."""
         team1_key, team2_key, self.key = jax.random.split(self.key, 3)
-        agent1 = config_swarm
-        agent2 = boid
-        x_action1, y_action1 = agent1.act(self.state, team=1, key=team1_key)
-        x_action2, y_action2 = agent2.act(self.state, team=2, key=team2_key)
+        x_action1, y_action1 = self.agent1.act(self.state, team=1, key=team1_key)
+        x_action2, y_action2 = self.agent2.act(self.state, team=2, key=team2_key)
 
         self.state, _ = self.env.step(self.state, x_action1, y_action1, x_action2, y_action2)
         
@@ -54,11 +57,11 @@ class SwarmSimulator:
         self.scatter1.set_offsets(positions1[0][alive1[0]])
         self.scatter2.set_offsets(positions2[0][alive2[0]])
 
-        self.ax.set_title(f"{agent1.__name__}={self.state.health1[0].sum():.1f} vs {agent2.__name__}={self.state.health2[0].sum():.1f}")
+        self.ax.set_title(f"{self.agent1.__name__}={self.state.health1[0].sum():.1f} vs {self.agent2.__name__}={self.state.health2[0].sum():.1f}")
 
         return [self.scatter1, self.scatter2]
 
-    def run(self, output_file='swarm_simulation.gif'):
+    def run(self):
         self.state = self.env.reset()
         anim = FuncAnimation(
             self.fig, 
@@ -67,6 +70,9 @@ class SwarmSimulator:
             blit=True,
             repeat=False
         )
+        name1 = self.agent1.__name__.split(".")[-1]
+        name2 = self.agent2.__name__.split(".")[-1]
+        output_file = f"animations/{name1}-{name2}.gif"
         anim.save(output_file, writer=PillowWriter(fps=20, bitrate=1800))
         print(f"Animation saved to {output_file}")
 
