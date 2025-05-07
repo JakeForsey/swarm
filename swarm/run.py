@@ -11,7 +11,7 @@ from swarm.batch import batch_act, compute_agent_schedules
 
 
 def main():
-    num_rounds_per_matchup = 1024
+    num_rounds_per_matchup = 512
     episode_length = 128
 
     agents = [
