@@ -22,6 +22,28 @@ def compute_agent_schedules(num_agents: int, rounds_per_matchup: int, team: int)
     return schedule
 
 
+@jax.jit
+def get_indices(mask: jnp.ndarray) -> jnp.ndarray:
+    """Convert boolean mask to integer indices."""
+    return jnp.nonzero(mask, size=mask.shape[0])[0]
+
+
+@jax.jit
+def get_active_states(state: State, indices: jnp.ndarray) -> State:
+    """Get states for active agents only."""
+    return jax.tree.map(lambda x: x[indices], state)
+
+
+@jax.jit
+def place_actions(x_actions: jnp.ndarray, y_actions: jnp.ndarray, 
+                 agent_x: jnp.ndarray, agent_y: jnp.ndarray,
+                 indices: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+    """Place agent actions in the correct positions."""
+    x_actions = x_actions.at[indices].set(agent_x)
+    y_actions = y_actions.at[indices].set(agent_y)
+    return x_actions, y_actions
+
+
 def batch_act(state: State, agents: list, agent_schedules: jnp.ndarray, team: int, key: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
     batch_size, num_agents = state.x1.shape if team == 1 else state.x2.shape
     
@@ -29,15 +51,24 @@ def batch_act(state: State, agents: list, agent_schedules: jnp.ndarray, team: in
     x_actions = jnp.zeros((batch_size, num_agents))
     y_actions = jnp.zeros((batch_size, num_agents))
     
-    for i, agent in enumerate(agents):
+    # Split key for each agent
+    keys = jax.random.split(key, len(agents))
+    
+    for i, (agent, agent_key) in enumerate(zip(agents, keys)):
         # Get the agents actions for the rounds where it's active
         mask = agent_schedules[i]
-        active_states = jax.tree.map(lambda x: x[mask], state)
-        agent_x_actions, agent_y_actions = agent.act(active_states, team, key)
-                
+        indices = get_indices(mask)
+        
+        # Get active states and compute actions
+        active_states = get_active_states(state, indices)
+        agent_x_actions, agent_y_actions = agent.act(active_states, team, agent_key)
+        
         # Place actions in correct positions
-        x_actions = x_actions.at[mask].set(agent_x_actions)
-        y_actions = y_actions.at[mask].set(agent_y_actions)
+        x_actions, y_actions = place_actions(
+            x_actions, y_actions, 
+            agent_x_actions, agent_y_actions, 
+            indices,
+        )
     
     return x_actions, y_actions
 
@@ -63,10 +94,12 @@ def main():
     print(f"Episode length: {episode_length}")
 
     start = time.perf_counter()
-    for step in range(env.episode_length):
+    keys1 = jax.random.split(jax.random.PRNGKey(0), env.episode_length)
+    keys2 = jax.random.split(jax.random.PRNGKey(1), env.episode_length)
+    for step, key1, key2 in zip(range(env.episode_length), keys1, keys2):
         print(f"Step {step}/{env.episode_length}")
-        x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, jax.random.PRNGKey(step))
-        x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, jax.random.PRNGKey(step + 1))
+        x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, key1)
+        x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, key2)
         state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
         
         if step == env.episode_length - 1:
