@@ -40,10 +40,10 @@ def main():
                 team1_reward = reward[agent_schedules1[i]]
                 team2_reward = -1 * reward[agent_schedules2[i]]
                 rewards = jnp.concatenate([team1_reward, team2_reward])
-                reward_summary[agent.__name__] = rewards.mean()
+                reward_summary[agent.__name__.split(".")[-1]] = rewards.mean()
 
             for agent, reward in sorted(reward_summary.items(), key=lambda x: x[1], reverse=True):
-                print(f"{agent:>30} reward: {reward:.2f}")
+                print(f"{agent:>20} reward: {reward:.2f}")
     
     end = time.perf_counter()
     print(f"Steps per second: {(env.episode_length * env.batch_size) / (end - start):,.0f}")
