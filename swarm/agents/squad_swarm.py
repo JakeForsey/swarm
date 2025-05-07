@@ -5,34 +5,27 @@ from swarm.env import State
 
 
 # Formation parameters
-NUM_SQUADS = 4  # Number of independent squads
-SQUAD_RADIUS = 0.12  # Slightly larger formation
-FORMATION_WEIGHT = 0.06  # Reduced formation weight
-VELOCITY_WEIGHT = 0.08   # Reduced velocity matching
-DAMPING = 0.1          # Reduced damping
+SQUAD_RADIUS = 0.15      # Slightly looser squad radius
+FORMATION_WEIGHT = 0.08  # Stronger formation weight
+VELOCITY_WEIGHT = 0.06   # Reduced velocity weight
+DAMPING = 0.15          # Stronger damping
 
 # Combat parameters
-CHASE_RADIUS = 0.25     # Increased chase radius
-CHASE_WEIGHT = 0.03    # Reduced chase weight
-MIN_SQUAD_SIZE = 2     # Keep minimum squad size
-HEALTH_THRESHOLD = 0.2  # Lower health threshold
+CHASE_RADIUS = 0.2      # Reduced chase radius
+CHASE_WEIGHT = 0.05     # Balanced chase weight
+MIN_SQUAD_SIZE = 2      # Keep minimum squad size
+HEALTH_THRESHOLD = 0.3  # Increased health threshold
 
 
 def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Squad swarm agent that forms multiple independent squads in fixed positions.
+    """Squad swarm that forms multiple tight clusters to chase enemies while maintaining formation.
     
     Strategy:
-    1. Divides agents into NUM_SQUADS (4) independent squads
-    2. Each squad maintains a tight formation (radius 0.12) around a fixed position:
-       - Squad 0: Top left corner
-       - Squad 1: Top right corner
-       - Squad 2: Bottom left corner
-       - Squad 3: Bottom right corner
-    3. Squads independently engage enemies when:
-       - Enemy is within chase radius (0.25)
-       - Squad has minimum size (2+ agents)
-       - Squad health above threshold (0.2)
-    4. Uses velocity matching and damping for smooth movement
+    1. Forms multiple independent squads of 2+ agents
+    2. Each squad maintains tight formation (radius 0.15)
+    3. Squads coordinate to chase nearest enemy when healthy
+    4. Uses strong damping (0.15) for stable movement
+    5. Implements moderate chase radius (0.2) for focused combat
     
     Parameters:
         state: Current game state containing positions, velocities, and health
@@ -47,127 +40,105 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
         y = state.y1
         vx = state.vx1
         vy = state.vy1
-        health = state.health1
         enemy_x = state.x2
         enemy_y = state.y2
+        health = state.health1
     elif team == 2:
         x = state.x2
         y = state.y2
         vx = state.vx2
         vy = state.vy2
-        health = state.health2
         enemy_x = state.x1
         enemy_y = state.y1
+        health = state.health2
     else:
         raise ValueError(f"Invalid team: {team}")
     
-    return _act(x, y, vx, vy, health, enemy_x, enemy_y, key)
+    return _act(x, y, vx, vy, enemy_x, enemy_y, health, key)
 
 
 @jax.jit
 def _act(
     x: jnp.ndarray, y: jnp.ndarray,
     vx: jnp.ndarray, vy: jnp.ndarray,
-    health: jnp.ndarray,
     enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
+    health: jnp.ndarray,
     key: jax.random.PRNGKey,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
     x_action = jnp.zeros_like(x)
     y_action = jnp.zeros_like(y)
     
-    # Calculate squad assignments
-    num_agents = x.shape[1]
-    agents_per_squad = num_agents // NUM_SQUADS
-    squad_assignments = jnp.arange(num_agents) // agents_per_squad
+    # Add velocity damping
+    x_action -= vx * DAMPING
+    y_action -= vy * DAMPING
     
-    # Initialize squad centers
-    squad_centers_x = jnp.zeros((x.shape[0], NUM_SQUADS))
-    squad_centers_y = jnp.zeros((x.shape[0], NUM_SQUADS))
+    # Calculate distances to allies
+    ally_dx = x[:, None, :] - x[:, :, None]
+    ally_dy = y[:, None, :] - y[:, :, None]
     
-    # Calculate squad centers
-    for squad in range(NUM_SQUADS):
-        squad_mask = squad_assignments == squad
-        # Calculate mean position for each batch with proper wrapping
-        squad_x = x * squad_mask
-        squad_y = y * squad_mask
-        
-        # Handle wrapping by shifting coordinates to be centered around the first agent
-        first_agent_x = jnp.where(squad_mask, x, 0.0)[:, 0]  # Remove extra dimension
-        first_agent_y = jnp.where(squad_mask, y, 0.0)[:, 0]  # Remove extra dimension
-        
-        # Shift coordinates to be relative to first agent
-        dx = squad_x - first_agent_x[:, None]  # Add dimension for broadcasting
-        dy = squad_y - first_agent_y[:, None]  # Add dimension for broadcasting
-        
-        # Handle wrapping
-        dx = jnp.where(dx > 0.5, dx - 1.0, dx)
-        dx = jnp.where(dx < -0.5, dx + 1.0, dx)
-        dy = jnp.where(dy > 0.5, dy - 1.0, dy)
-        dy = jnp.where(dy < -0.5, dy + 1.0, dy)
-        
-        # Calculate mean relative position
-        mean_dx = jnp.mean(dx, axis=1)  # Remove keepdims
-        mean_dy = jnp.mean(dy, axis=1)  # Remove keepdims
-        
-        # Convert back to absolute coordinates
-        squad_centers_x = squad_centers_x.at[:, squad].set(
-            jnp.mod(first_agent_x + mean_dx, 1.0)
-        )
-        squad_centers_y = squad_centers_y.at[:, squad].set(
-            jnp.mod(first_agent_y + mean_dy, 1.0)
-        )
+    # Handle wrapping for inter-agent distances
+    ally_dx = jnp.where(ally_dx > 0.5, ally_dx - 1.0, ally_dx)
+    ally_dx = jnp.where(ally_dx < -0.5, ally_dx + 1.0, ally_dx)
+    ally_dy = jnp.where(ally_dy > 0.5, ally_dy - 1.0, ally_dy)
+    ally_dy = jnp.where(ally_dy < -0.5, ally_dy + 1.0, ally_dy)
     
-    # Calculate positions relative to squad centers
-    dx = x - squad_centers_x[:, squad_assignments]
-    dy = y - squad_centers_y[:, squad_assignments]
+    ally_dist = jnp.sqrt(ally_dx**2 + ally_dy**2)
     
-    # Handle wrapping by finding shortest path to center
+    # Form squads based on proximity
+    squad_mask = ally_dist < SQUAD_RADIUS
+    
+    # Calculate squad centers using relative positions
+    # Use the first agent in each squad as reference point
+    squad_centers_x = jnp.zeros_like(x)
+    squad_centers_y = jnp.zeros_like(y)
+    
+    for i in range(x.shape[1]):
+        # Get agents in this squad
+        squad_members = squad_mask[:, i, :]
+        
+        # Calculate relative positions to first agent
+        rel_x = x - x[:, i:i+1]
+        rel_y = y - y[:, i:i+1]
+        
+        # Handle wrapping for relative positions
+        rel_x = jnp.where(rel_x > 0.5, rel_x - 1.0, rel_x)
+        rel_x = jnp.where(rel_x < -0.5, rel_x + 1.0, rel_x)
+        rel_y = jnp.where(rel_y > 0.5, rel_y - 1.0, rel_y)
+        rel_y = jnp.where(rel_y < -0.5, rel_y + 1.0, rel_y)
+        
+        # Calculate mean position relative to first agent
+        mean_rel_x = jnp.sum(rel_x * squad_members, axis=1, keepdims=True) / jnp.maximum(jnp.sum(squad_members, axis=1, keepdims=True), 1)
+        mean_rel_y = jnp.sum(rel_y * squad_members, axis=1, keepdims=True) / jnp.maximum(jnp.sum(squad_members, axis=1, keepdims=True), 1)
+        
+        # Convert back to absolute positions
+        squad_centers_x = jnp.where(squad_members, x[:, i:i+1] + mean_rel_x, squad_centers_x)
+        squad_centers_y = jnp.where(squad_members, y[:, i:i+1] + mean_rel_y, squad_centers_y)
+    
+    # Move towards squad centers
+    dx = squad_centers_x - x
+    dy = squad_centers_y - y
+    
+    # Handle wrapping for movement
     dx = jnp.where(dx > 0.5, dx - 1.0, dx)
     dx = jnp.where(dx < -0.5, dx + 1.0, dx)
     dy = jnp.where(dy > 0.5, dy - 1.0, dy)
     dy = jnp.where(dy < -0.5, dy + 1.0, dy)
     
-    # Calculate target positions on squad circle
-    agent_angles = jnp.linspace(0, 2 * jnp.pi, agents_per_squad, endpoint=False)
-    target_dx = SQUAD_RADIUS * jnp.cos(agent_angles[squad_assignments % agents_per_squad])
-    target_dy = SQUAD_RADIUS * jnp.sin(agent_angles[squad_assignments % agents_per_squad])
+    x_action += dx * FORMATION_WEIGHT
+    y_action += dy * FORMATION_WEIGHT
     
-    # Calculate formation movement
-    formation_dx = target_dx - dx
-    formation_dy = target_dy - dy
+    # Velocity matching within squads
+    # Reshape velocities for broadcasting
+    vx_expanded = vx[:, None, :]  # Shape: [batch, 1, agents]
+    vy_expanded = vy[:, None, :]  # Shape: [batch, 1, agents]
     
-    # Calculate velocity matching within squads
-    velocity_match_x = jnp.zeros_like(vx)
-    velocity_match_y = jnp.zeros_like(vy)
+    # Calculate average velocity for each squad
+    squad_vx = jnp.sum(vx_expanded * squad_mask, axis=2) / jnp.maximum(jnp.sum(squad_mask, axis=2), 1)
+    squad_vy = jnp.sum(vy_expanded * squad_mask, axis=2) / jnp.maximum(jnp.sum(squad_mask, axis=2), 1)
     
-    for squad in range(NUM_SQUADS):
-        squad_mask = squad_assignments == squad
-        squad_vx = vx * squad_mask
-        squad_vy = vy * squad_mask
-        
-        # Calculate squad size and average velocity
-        squad_size = jnp.sum(squad_mask)
-        vx_avg = jnp.where(squad_size > 0, 
-                          jnp.sum(squad_vx) / squad_size, 
-                          0.0)
-        vy_avg = jnp.where(squad_size > 0, 
-                          jnp.sum(squad_vy) / squad_size, 
-                          0.0)
-        
-        # Apply velocity matching only to squad members
-        velocity_match_x += (vx_avg - vx) * squad_mask
-        velocity_match_y += (vy_avg - vy) * squad_mask
-    
-    # Add formation and velocity matching forces
-    x_action += formation_dx * FORMATION_WEIGHT
-    y_action += formation_dy * FORMATION_WEIGHT
-    x_action += velocity_match_x * VELOCITY_WEIGHT
-    y_action += velocity_match_y * VELOCITY_WEIGHT
-    
-    # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action += (squad_vx - vx) * VELOCITY_WEIGHT
+    y_action += (squad_vy - vy) * VELOCITY_WEIGHT
     
     # Combat behavior
     # Calculate distances to enemies
@@ -182,7 +153,7 @@ def _act(
     
     enemy_dist = jnp.sqrt(enemy_dx**2 + enemy_dy**2)
     
-    # Find closest enemy for each agent
+    # Find closest enemy for each squad
     min_enemy_dist = jnp.min(enemy_dist, axis=1)
     closest_enemy_idx = jnp.argmin(enemy_dist, axis=1)
     
@@ -194,21 +165,17 @@ def _act(
     closest_enemy_dx = enemy_dx[batch_idx, enemy_idx, agent_idx]
     closest_enemy_dy = enemy_dy[batch_idx, enemy_idx, agent_idx]
     
-    # Calculate squad-based combat decisions
-    for squad in range(NUM_SQUADS):
-        squad_mask = squad_assignments == squad
-        squad_size = jnp.sum(squad_mask)
-        squad_health = jnp.mean(health * squad_mask)
-        
-        # Calculate group advantage within squad
-        squad_enemy_dist = enemy_dist * squad_mask[None, :]  # Broadcast squad mask
-        squad_group_size = jnp.sum(squad_enemy_dist < CHASE_RADIUS)
-        group_advantage = squad_group_size > MIN_SQUAD_SIZE
-        health_aggression = squad_health > HEALTH_THRESHOLD
-        
-        # Chase if squad has advantage and good health
-        chase_mask = (min_enemy_dist < CHASE_RADIUS) & group_advantage & health_aggression & squad_mask
-        x_action += -closest_enemy_dx * chase_mask * CHASE_WEIGHT
-        y_action += -closest_enemy_dy * chase_mask * CHASE_WEIGHT
+    # Calculate squad health and size
+    # Reshape health for broadcasting
+    health_expanded = health[:, None, :]  # Shape: [batch, 1, agents]
+    
+    # Calculate average health for each squad
+    squad_health = jnp.sum(health_expanded * squad_mask, axis=2) / jnp.maximum(jnp.sum(squad_mask, axis=2), 1)
+    squad_size = jnp.sum(squad_mask, axis=2)
+    
+    # Chase if squad is healthy and has enough members
+    chase_mask = (min_enemy_dist < CHASE_RADIUS) & (squad_health > HEALTH_THRESHOLD) & (squad_size >= MIN_SQUAD_SIZE)
+    x_action += -closest_enemy_dx * chase_mask * CHASE_WEIGHT
+    y_action += -closest_enemy_dy * chase_mask * CHASE_WEIGHT
     
     return x_action, y_action
