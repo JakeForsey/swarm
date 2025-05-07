@@ -34,22 +34,6 @@ def create_config_from_params(params: Dict[str, float]) -> SwarmConfig:
         )
     )
 
-def params_to_array(params: Dict[str, float]) -> jnp.ndarray:
-    """Convert parameter dictionary to array."""
-    return jnp.array([
-        params['formation_scale'],
-        params['formation_shape'],
-        params['formation_weight'],
-        params['aggressiveness'],
-        params['attack_threshold'],
-        params['retreat_threshold'],
-        params['combat_weight'],
-        params['max_speed'],
-        params['smoothness'],
-        params['damping']
-    ])
-
-
 def evaluate_params(**params: Dict[str, float]) -> float:
     """Evaluate parameters by running an episode."""
     # Create config and agent
@@ -115,7 +99,7 @@ def evaluate_params(**params: Dict[str, float]) -> float:
     
     return final_reward
 
-def optimize_swarm(num_iterations: int = 100) -> SwarmConfig:
+def optimize_swarm() -> SwarmConfig:
     """Optimize swarm parameters using optax."""
     # Define parameter bounds
     param_bounds = {
