@@ -37,7 +37,7 @@ class SwarmEnv:
     def __init__(
             self,
             num_agents: int = 32,
-            episode_length: int = 256,
+            episode_length: int = 128,
             batch_size: int = 1024 * 32,
             max_speed: float = 0.01,
             collision_radius: float = 0.04,
