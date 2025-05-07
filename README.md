@@ -8,13 +8,14 @@ A JAX-based simulation environment for studying swarm intelligence and multi-age
 
 ## Example matches
 
-|   | health_swarm (0.80) | predator_swarm (0.66) | vortex_swarm (0.31) | random (-0.92) |
-| --- | --- | --- | --- | --- |
-health_swarm | ![](results/animations/health_swarm_vs_health_swarm.gif) | ![](results/animations/health_swarm_vs_predator_swarm.gif) | ![](results/animations/health_swarm_vs_vortex_swarm.gif) | ![](results/animations/health_swarm_vs_random.gif)
-predator_swarm | ![](results/animations/predator_swarm_vs_health_swarm.gif) | ![](results/animations/predator_swarm_vs_predator_swarm.gif) | ![](results/animations/predator_swarm_vs_vortex_swarm.gif) | ![](results/animations/predator_swarm_vs_random.gif)
-vortex_swarm | ![](results/animations/vortex_swarm_vs_health_swarm.gif) | ![](results/animations/vortex_swarm_vs_predator_swarm.gif) | ![](results/animations/vortex_swarm_vs_vortex_swarm.gif) | ![](results/animations/vortex_swarm_vs_random.gif)
-random | ![](results/animations/random_vs_health_swarm.gif) | ![](results/animations/random_vs_predator_swarm.gif) | ![](results/animations/random_vs_vortex_swarm.gif) | ![](results/animations/random_vs_random.gif)
-
+|  | <img width="125px" height="0px"> | <img width="125px" height="0px"> | <img width="125px" height="0px"> | <img width="125px" height="0px"> | <img width="125px" height="0px"> |
+| --- | --- | --- | --- | --- | --- |
+|  | health_swarm (0.80) | predator_swarm (0.66) | vortex_swarm (0.31) | fortress_swarm (-0.92) | random (-0.92) |
+health_swarm | ![](results/animations/health_swarm_vs_health_swarm.gif) | ![](results/animations/health_swarm_vs_predator_swarm.gif) | ![](results/animations/health_swarm_vs_vortex_swarm.gif) | ![](results/animations/health_swarm_vs_fortress_swarm.gif) | ![](results/animations/health_swarm_vs_random.gif)
+predator_swarm | ![](results/animations/predator_swarm_vs_health_swarm.gif) | ![](results/animations/predator_swarm_vs_predator_swarm.gif) | ![](results/animations/predator_swarm_vs_vortex_swarm.gif) | ![](results/animations/predator_swarm_vs_fortress_swarm.gif) | ![](results/animations/predator_swarm_vs_random.gif)
+vortex_swarm | ![](results/animations/vortex_swarm_vs_health_swarm.gif) | ![](results/animations/vortex_swarm_vs_predator_swarm.gif) | ![](results/animations/vortex_swarm_vs_vortex_swarm.gif) | ![](results/animations/vortex_swarm_vs_fortress_swarm.gif) | ![](results/animations/vortex_swarm_vs_random.gif)
+fortress_swarm | ![](results/animations/fortress_swarm_vs_health_swarm.gif) | ![](results/animations/fortress_swarm_vs_predator_swarm.gif) | ![](results/animations/fortress_swarm_vs_vortex_swarm.gif) | ![](results/animations/fortress_swarm_vs_fortress_swarm.gif) | ![](results/animations/fortress_swarm_vs_random.gif)
+random | ![](results/animations/random_vs_health_swarm.gif) | ![](results/animations/random_vs_predator_swarm.gif) | ![](results/animations/random_vs_vortex_swarm.gif) | ![](results/animations/random_vs_fortress_swarm.gif) | ![](results/animations/random_vs_random.gif)
 ## Average Agent Rewards
 ```
         health_swarm reward: 0.80
