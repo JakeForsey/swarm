@@ -56,23 +56,29 @@ class SwarmEnv:
         # Initialise time
         t = jnp.zeros((self.batch_size, ))
 
+        shape = (self.batch_size, self.num_agents)
         # Initialize positions
-        x1 = jax.random.uniform(k1, (self.batch_size, self.num_agents), minval=0.0, maxval=0.5)
-        y1 = jax.random.uniform(k2, (self.batch_size, self.num_agents), minval=0.0, maxval=1.0)
-        x2 = jax.random.uniform(k3, (self.batch_size, self.num_agents), minval=0.5, maxval=1.0)
-        y2 = jax.random.uniform(k4, (self.batch_size, self.num_agents), minval=0.0, maxval=1.0)
+        x1 = jax.random.uniform(k1, shape, minval=0.0, maxval=0.5)
+        y1 = jax.random.uniform(k2, shape, minval=0.0, maxval=1.0)
+        x2 = jax.random.uniform(k3, shape, minval=0.5, maxval=1.0)
+        y2 = jax.random.uniform(k4, shape, minval=0.0, maxval=1.0)
         
         # Initialize velocities
-        vx1 = jax.random.uniform(k5, (self.batch_size, self.num_agents), minval=-self.max_speed, maxval=self.max_speed)
-        vy1 = jax.random.uniform(k6, (self.batch_size, self.num_agents), minval=-self.max_speed, maxval=self.max_speed)
-        vx2 = jax.random.uniform(k7, (self.batch_size, self.num_agents), minval=-self.max_speed, maxval=self.max_speed)
-        vy2 = jax.random.uniform(k8, (self.batch_size, self.num_agents), minval=-self.max_speed, maxval=self.max_speed)
+        vx1 = jax.random.uniform(k5, shape, minval=-self.max_speed, maxval=self.max_speed)
+        vy1 = jax.random.uniform(k6, shape, minval=-self.max_speed, maxval=self.max_speed)
+        vx2 = jax.random.uniform(k7, shape, minval=-self.max_speed, maxval=self.max_speed)
+        vy2 = jax.random.uniform(k8, shape, minval=-self.max_speed, maxval=self.max_speed)
 
         # Initialize health
-        health1 = jnp.ones((self.batch_size, self.num_agents))
-        health2 = jnp.ones((self.batch_size, self.num_agents))
+        health1 = jnp.ones(shape)
+        health2 = jnp.ones(shape)
         
-        return State(t=t, x1=x1, x2=x2, y1=y1, y2=y2, vx1=vx1, vy1=vy1, vx2=vx2, vy2=vy2, health1=health1, health2=health2)
+        return State(
+            t=t,
+            x1=x1, x2=x2, y1=y1, y2=y2,
+            vx1=vx1, vy1=vy1, vx2=vx2, vy2=vy2,
+            health1=health1, health2=health2,
+        )
     
     def step(
             self,
@@ -105,10 +111,10 @@ def _step(
 ) -> tuple[State, jnp.ndarray]:
     # Assert that actions are correct shape and dtype
     action_shape = (state.batch_size, state.num_agents)
-    assert x_action1.shape == action_shape, f"x_action1.shape: {x_action1.shape}, expected action_shape: {action_shape}"
-    assert y_action1.shape == action_shape, f"y_action1.shape: {y_action1.shape}, expected action_shape: {action_shape}"
-    assert x_action2.shape == action_shape, f"x_action2.shape: {x_action2.shape}, expected action_shape: {action_shape}"
-    assert y_action2.shape == action_shape, f"y_action2.shape: {y_action2.shape}, expected action_shape: {action_shape}"
+    assert x_action1.shape == action_shape
+    assert y_action1.shape == action_shape
+    assert x_action2.shape == action_shape
+    assert y_action2.shape == action_shape
     
     # Update time
     t = state.t + 1
@@ -143,7 +149,7 @@ def _step(
     # Calculate time to closest approach for each pair
     # This is the time when the relative distance is minimized
     rel_v_squared = rel_vx**2 + rel_vy**2
-    time_to_closest = - (orig_dx * rel_vx + orig_dy * rel_vy) / (rel_v_squared + 1e-6)  # Add small epsilon to avoid division by zero
+    time_to_closest = - (orig_dx * rel_vx + orig_dy * rel_vy) / (rel_v_squared + 1e-6)
     
     # Clamp time to closest approach to be between 0 and 1 (current timestep)
     time_to_closest = jnp.clip(time_to_closest, 0, 1)
@@ -160,7 +166,8 @@ def _step(
     collisions = collisions * alive
 
     # Update health
-    health1 = state.health1 - jnp.sum(collisions, axis=1) * 0.1  # Each collision reduces health by 0.1
+    # Each collision reduces health by 0.1
+    health1 = state.health1 - jnp.sum(collisions, axis=1) * 0.1
     health2 = state.health2 - jnp.sum(collisions, axis=2) * 0.1
     
     # Clamp health to be between 0 and 1
@@ -184,6 +191,11 @@ def _step(
     )
 
     return (
-        State(t=t, x1=x1, x2=x2, y1=y1, y2=y2, vx1=vx1, vx2=vx2, vy1=vy1, vy2=vy2, health1=health1, health2=health2),
+        State(
+            t=t,
+            x1=x1, x2=x2, y1=y1, y2=y2,
+            vx1=vx1, vx2=vx2, vy1=vy1, vy2=vy2,
+            health1=health1, health2=health2,
+        ),
         reward,
     )

@@ -1,5 +1,4 @@
 import os
-import sys
 
 import jax
 import jax.numpy as jnp
@@ -10,11 +9,10 @@ from swarm.agents import get_agent
 from swarm.env import SwarmEnv
 from swarm.batch import compute_agent_schedules, batch_act
 
-
-def create_animation(states, team1_name, team2_name, filename):
+def create_animation(states, agent1_name, agent2_name, filename):
     """Create and save an animation of the battle."""
-    team1_colour = 'blue'
-    team2_colour = 'red'
+    agent1_colour = 'blue'
+    agent2_colour = 'red'
     
     # Create figure with two subplots
     fig = plt.figure(figsize=(8, 8.5))  # Reduce overall figure size
@@ -28,12 +26,12 @@ def create_animation(states, team1_name, team2_name, filename):
     ax1.set_xticks([])
     ax1.set_aspect('equal')
     ax1.grid(False)
-    team1_scatter = ax1.scatter([], [], c=team1_colour, alpha=0.5)
-    team2_scatter = ax1.scatter([], [], c=team2_colour, alpha=0.5)
+    agent1_scatter = ax1.scatter([], [], c=agent1_colour, alpha=0.5)
+    agent2_scatter = ax1.scatter([], [], c=agent2_colour, alpha=0.5)
     
     # Add title with colored team names
-    ax1.text(0.05, 1.01, team1_name, color=team1_colour, ha='left', va='bottom', fontsize=18, transform=ax1.transAxes)
-    ax1.text(0.95, 1.01, team2_name, color=team2_colour, ha='right', va='bottom', fontsize=18, transform=ax1.transAxes)
+    ax1.text(0.05, 1.01, agent1_name, color=agent1_colour, ha='left', va='bottom', fontsize=18, transform=ax1.transAxes)
+    ax1.text(0.95, 1.01, agent2_name, color=agent2_colour, ha='right', va='bottom', fontsize=18, transform=ax1.transAxes)
     
     # Health bar plot
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
@@ -46,10 +44,10 @@ def create_animation(states, team1_name, team2_name, filename):
         height=0.25,
         alpha=0.3,
     )
-    team1_health, team2_health = ax2.barh(
+    agent1_health, agent2_health = ax2.barh(
         [0.65, 0.35],
         [0, 0],
-        color=[team1_colour, team2_colour],
+        color=[agent1_colour, agent2_colour],
         height=0.25,
         alpha=0.8,
     )
@@ -64,30 +62,30 @@ def create_animation(states, team1_name, team2_name, filename):
 
     def update(frame):
         # Update team positions
-        team1_alive = states[frame].health1[0] > 0
-        team2_alive = states[frame].health2[0] > 0
+        agent1_alive = states[frame].health1[0] > 0
+        agent2_alive = states[frame].health2[0] > 0
         
         # Get positions of alive agents only
-        team1_positions = jnp.column_stack([
-            states[frame].x1[0][team1_alive],
-            states[frame].y1[0][team1_alive]
+        agent1_positions = jnp.column_stack([
+            states[frame].x1[0][agent1_alive],
+            states[frame].y1[0][agent1_alive]
         ])
-        team2_positions = jnp.column_stack([
-            states[frame].x2[0][team2_alive],
-            states[frame].y2[0][team2_alive]
+        agent2_positions = jnp.column_stack([
+            states[frame].x2[0][agent2_alive],
+            states[frame].y2[0][agent2_alive]
         ])
-        team1_scatter.set_offsets(team1_positions)
-        team2_scatter.set_offsets(team2_positions)
+        agent1_scatter.set_offsets(agent1_positions)
+        agent2_scatter.set_offsets(agent2_positions)
         
         # Calculate health percentages
         total_health1 = jnp.sum(states[frame].health1[0]) / len(states[frame].health1[0])
         total_health2 = jnp.sum(states[frame].health2[0]) / len(states[frame].health2[0])
         
         # Update health bars
-        team1_health.set_width(total_health1)
-        team2_health.set_width(total_health2)
+        agent1_health.set_width(total_health1)
+        agent2_health.set_width(total_health2)
 
-        return [team1_scatter, team2_scatter, team1_health, team2_health]
+        return [agent1_scatter, agent2_scatter, agent1_health, agent2_health]
     
     # Create animation
     anim = FuncAnimation(fig, update, frames=len(states), blit=True)
@@ -96,7 +94,7 @@ def create_animation(states, team1_name, team2_name, filename):
     anim.save(f"results/animations/{filename}.gif", writer='pillow', fps=20)
     plt.close()
 
-def run_match(env, agent1, agent2, num_agents=32):
+def run_match(env: SwarmEnv, agent1, agent2, num_agents: int = 32):
     """Run a single match between two agents and return the states."""
     # Compute agent schedules
     agent_schedules1 = compute_agent_schedules(num_agents, 1, 1)
@@ -111,7 +109,7 @@ def run_match(env, agent1, agent2, num_agents=32):
     keys2 = jax.random.split(jax.random.PRNGKey(1), env.episode_length)
     
     # Run the episode
-    for step, (key1, key2) in enumerate(zip(keys1, keys2)):
+    for key1, key2 in zip(keys1, keys2):
         # Get actions from both agents
         x_action1, y_action1 = batch_act(state, [agent1], agent_schedules1, 1, key1)
         x_action2, y_action2 = batch_act(state, [agent2], agent_schedules2, 2, key2)
@@ -122,25 +120,18 @@ def run_match(env, agent1, agent2, num_agents=32):
     
     return states, reward
 
-def main():
+def run(agent1_name: str, agent2_name: str, episode_length: int = 128):
+    print("[init] Creating animation...")
     os.makedirs("results/animations", exist_ok=True)
 
-    team1_name, team2_name = sys.argv[1], sys.argv[2]
-    team1_agent = get_agent(team1_name)
-    team2_agent = get_agent(team2_name)
+    print(f"[init] Loading agents ({agent1_name} and {agent2_name})...")
+    agent1 = get_agent(agent1_name)
+    agent2 = get_agent(agent2_name)
     
-    env = SwarmEnv(batch_size=1)
-                
-    states, reward = run_match(env, team1_agent, team2_agent)
-    
-    # Create and save animation
-    filename = f"{team1_name}_vs_{team2_name}"
-    create_animation(states, team1_name, team2_name, filename)
-    
-    # Print results
-    print(f"\n{team1_name} vs {team2_name}:")
-    print(f"Team 1 reward: {reward[0]:.2f}")
-    print(f"Team 2 reward: {reward[1]:.2f}")
+    env = SwarmEnv(batch_size=1, episode_length=episode_length)
+    print(f"[run] Running match ({agent1_name} vs {agent2_name})...")
+    states, _ = run_match(env, agent1, agent2)
 
-if __name__ == "__main__":
-    main()
+    filename = f"{agent1_name}_vs_{agent2_name}"
+    print(f"[animate] Creating animation...")
+    create_animation(states, agent1_name, agent2_name, filename)

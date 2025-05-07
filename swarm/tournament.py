@@ -7,45 +7,37 @@ from swarm.agents import load_agents
 from swarm.env import SwarmEnv
 from swarm.batch import batch_act, compute_agent_schedules
 
-
-def main():
-    num_rounds_per_matchup = 512
-    episode_length = 128
+def run(num_rounds_per_matchup: int = 256, episode_length: int = 128):
+    print("[init] Loading agents...")
     agents = load_agents()
-
-    # num_rounds_per_matchup = 1024 * 64
-    # agents = [agent for agent in agents if agent.__name__.split(".")[-1] in ("random", "health_swarm")]
-
     num_agents = len(agents)
+
+    print("[init] Computing agent schedules...")
     agent_schedules1 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 1)
     agent_schedules2 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 2)
     batch_size = agent_schedules1.shape[1]
+
+    print("[init] Initializing environment...")
     env = SwarmEnv(batch_size=batch_size, episode_length=episode_length)
+
+    print("[init] Jitting environment, agents and running warmup step...")
     state = env.reset()
-
-    print(f"Batch size: {batch_size}")
-    print(f"Num agents: {num_agents}")
-    print(f"Num rounds per matchup: {num_rounds_per_matchup}")
-    print(f"Episode length: {episode_length}")
-
-    # Warmup step:
-    print("Jit and warmup...")
     x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, jax.random.PRNGKey(0))
     x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, jax.random.PRNGKey(0))
     state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
     state = env.reset()
 
-    # Run the round robin tournament:
+    print("[tournament] Starting tournament...")
     start = time.perf_counter()
     keys1 = jax.random.split(jax.random.PRNGKey(0), env.episode_length)
     keys2 = jax.random.split(jax.random.PRNGKey(1), env.episode_length)
-    for step, key1, key2 in zip(range(env.episode_length), keys1, keys2):
-        print(f"Step {step}/{env.episode_length}")
+    for step, key1, key2 in zip(range(1, env.episode_length + 1), keys1, keys2):
+        print(f"[tournament] Step {step}/{env.episode_length}")
         x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, key1)
         x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, key2)
         state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
         
-        if step == env.episode_length - 1:
+        if step == env.episode_length:
             # Create a dictionary of agent name -> reward
             reward_summary = {}
             for i, agent in enumerate(agents):
@@ -58,8 +50,8 @@ def main():
                 print(f"{agent:>20} reward: {reward:.2f}")
     
     end = time.perf_counter()
-    print(f"Steps per second: {(env.episode_length * env.batch_size) / (end - start):,.0f}")
-
-
-if __name__ == "__main__":
-    main()
+    tournament_duration = end - start
+    
+    print(f"[tournament] Tournament complete...")
+    print(f"[tournament] Time taken: {tournament_duration:.2f} seconds")
+    print(f"[tournament] Steps per second: {(env.episode_length * env.batch_size) / tournament_duration:,.0f}")

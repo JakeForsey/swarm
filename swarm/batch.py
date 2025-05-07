@@ -53,7 +53,13 @@ def compute_agent_schedules(num_agents: int, rounds_per_matchup: int, team: int)
     return schedule
 
 
-def batch_act(state: State, agents: list, agent_schedules: jnp.ndarray, team: int, key: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+def batch_act(
+    state: State,
+    agents: list,
+    agent_schedules: jnp.ndarray,
+    team: int,
+    key: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Run a batch of agents and combine their actions.
     
     Args:

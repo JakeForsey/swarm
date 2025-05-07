@@ -49,24 +49,18 @@ random | ![](results/animations/random_vs_health_swarm.gif) | ![](results/animat
 
 1. **Run a Round Robin Tournament**
 ```bash
-python -O -m swarm.run
+python -O -m swarm tournament
 ```
 
-2. **Optimize Configurable Agent**
+2. **Create Animation**
 ```bash
-python -O -m swarm.optimize
-```
-
-3. **Create Animation**
-```bash
-python -O -m swarm.animate <agent1> <agent2>
+python -O -m swarm animate <agent1> <agent2>
 ```
 
 ## Dependencies
 - JAX
 - NumPy
 - Matplotlib (for visualization)
-- (optional) bayesian-optimization (for tuning config_swarm)
 
 ## Development
 - New agent types can be added by implementing the `act(state, team, key) -> tuple[dvx, dvy]` interface
