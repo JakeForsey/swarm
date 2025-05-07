@@ -11,54 +11,46 @@ import jax.numpy as jnp
 from swarm.env import SwarmEnv
 from swarm.batch import batch_act, compute_agent_schedules
 from swarm import agents as agents_module
-from swarm.agents.config_swarm import SwarmConfig, FormationConfig, CombatConfig, MovementConfig, create_swarm_agent
+from swarm.agents.spiral_swarm import SpiralConfig, create_spiral_agent
 
-def create_config_from_params(params: Dict[str, float]) -> SwarmConfig:
-    """Create a SwarmConfig from the parameter dictionary."""
-    return SwarmConfig(
-        formation=FormationConfig(
-            scale=float(params['formation_scale']),
-            shape=float(params['formation_shape']),
-            weight=float(params['formation_weight'])
-        ),
-        combat=CombatConfig(
-            aggressiveness=float(params['aggressiveness']),
-            attack_threshold=float(params['attack_threshold']),
-            retreat_threshold=float(params['retreat_threshold']),
-            weight=float(params['combat_weight'])
-        ),
-        movement=MovementConfig(
-            max_speed=float(params['max_speed']),
-            smoothness=float(params['smoothness']),
-            damping=float(params['damping'])
-        )
+def create_config_from_params(params: Dict[str, float]) -> SpiralConfig:
+    """Create a SpiralConfig from the parameter dictionary."""
+    return SpiralConfig(
+        base_radius=float(params['base_radius']),
+        rotation_speed=float(params['rotation_speed']),
+        spiral_tightness=float(params['spiral_tightness']),
+        formation_weight=float(params['formation_weight']),
+        velocity_weight=float(params['velocity_weight']),
+        chase_radius=float(params['chase_radius']),
+        chase_weight=float(params['chase_weight']),
+        min_group_size=1,
+        health_aggression_scale=float(params['health_aggression_scale']),
+        perception_radius=float(params['perception_radius']),
+        damping=float(params['damping']),
+        approach_speed=float(params['approach_speed'])
     )
 
 def evaluate_params(**params: Dict[str, float]) -> float:
     """Evaluate parameters by running an episode."""
     # Create config and agent
-    config = SwarmConfig(
-        formation=FormationConfig(
-            scale=jnp.asarray(params['formation_scale'], dtype=jnp.float32),
-            shape=jnp.asarray(params['formation_shape'], dtype=jnp.float32),
-            weight=jnp.asarray(params['formation_weight'], dtype=jnp.float32)
-        ),
-        combat=CombatConfig(
-            aggressiveness=jnp.asarray(params['aggressiveness'], dtype=jnp.float32),
-            attack_threshold=jnp.asarray(params['attack_threshold'], dtype=jnp.float32),
-            retreat_threshold=jnp.asarray(params['retreat_threshold'], dtype=jnp.float32),
-            weight=jnp.asarray(params['combat_weight'], dtype=jnp.float32)
-        ),
-        movement=MovementConfig(
-            max_speed=jnp.asarray(params['max_speed'], dtype=jnp.float32),
-            smoothness=jnp.asarray(params['smoothness'], dtype=jnp.float32),
-            damping=jnp.asarray(params['damping'], dtype=jnp.float32)
-        )
+    config = SpiralConfig(
+        base_radius=jnp.asarray(params['base_radius'], dtype=jnp.float32),
+        rotation_speed=jnp.asarray(params['rotation_speed'], dtype=jnp.float32),
+        spiral_tightness=jnp.asarray(params['spiral_tightness'], dtype=jnp.float32),
+        formation_weight=jnp.asarray(params['formation_weight'], dtype=jnp.float32),
+        velocity_weight=jnp.asarray(params['velocity_weight'], dtype=jnp.float32),
+        chase_radius=jnp.asarray(params['chase_radius'], dtype=jnp.float32),
+        chase_weight=jnp.asarray(params['chase_weight'], dtype=jnp.float32),
+        min_group_size=1,
+        health_aggression_scale=jnp.asarray(params['health_aggression_scale'], dtype=jnp.float32),
+        perception_radius=jnp.asarray(params['perception_radius'], dtype=jnp.float32),
+        damping=jnp.asarray(params['damping'], dtype=jnp.float32),
+        approach_speed=jnp.asarray(params['approach_speed'], dtype=jnp.float32)
     )
 
     class Agent:
         def __init__(self):
-            self.act = create_swarm_agent(config)
+            self.act = create_spiral_agent(config)
     agent = Agent()
 
     # Load opponent agents
@@ -99,20 +91,21 @@ def evaluate_params(**params: Dict[str, float]) -> float:
     
     return final_reward
 
-def optimize_swarm() -> SwarmConfig:
+def optimize_swarm() -> SpiralConfig:
     """Optimize swarm parameters using optax."""
     # Define parameter bounds
     param_bounds = {
-        'formation_scale': (0.1, 0.9),
-        'formation_shape': (0.1, 0.9),
-        'formation_weight': (0.2, 1.4),
-        'aggressiveness': (0.4, 1.2),
-        'attack_threshold': (0.01, 0.6),
-        'retreat_threshold': (0.01, 0.6),
-        'combat_weight': (0.4, 1.4),
-        'max_speed': (0.004, 0.02),
-        'smoothness': (0.5, 0.98),
-        'damping': (0.04, 0.18)
+        'base_radius': (0.05, 0.2),
+        'rotation_speed': (0.1, 0.5),
+        'spiral_tightness': (0.1, 0.4),
+        'formation_weight': (0.05, 0.15),
+        'velocity_weight': (0.05, 0.15),
+        'chase_radius': (0.3, 0.5),
+        'chase_weight': (0.005, 0.02),
+        'health_aggression_scale': (0.5, 1.5),
+        'perception_radius': (0.2, 0.4),
+        'damping': (0.05, 0.15),
+        'approach_speed': (0.05, 0.2)
     }
     
     optimizer = BayesianOptimization(
@@ -140,7 +133,7 @@ def optimize_swarm() -> SwarmConfig:
 
     return best_config
 
-def save_best_config(config: SwarmConfig, reward: float, timestamp: str):
+def save_best_config(config: SpiralConfig, reward: float, timestamp: str):
     """Save the best configuration to a file."""
     # Create results directory if it doesn't exist
     os.makedirs("results", exist_ok=True)
@@ -149,29 +142,25 @@ def save_best_config(config: SwarmConfig, reward: float, timestamp: str):
     config_path = f"results/best_config_{timestamp}.py"
     with open(config_path, "w") as f:
         f.write(f"""# Best configuration from optimization
-from swarm.agents.config_swarm import SwarmConfig, FormationConfig, CombatConfig, MovementConfig, create_swarm_agent
+from swarm.agents.spiral_swarm import SpiralConfig
 
-BEST_CONFIG = SwarmConfig(
-    formation=FormationConfig(
-        scale={config.formation.scale},
-        shape={config.formation.shape},
-        weight={config.formation.weight}
-    ),
-    combat=CombatConfig(
-        aggressiveness={config.combat.aggressiveness},
-        attack_threshold={config.combat.attack_threshold},
-        retreat_threshold={config.combat.retreat_threshold},
-        weight={config.combat.weight}
-    ),
-    movement=MovementConfig(
-        max_speed={config.movement.max_speed},
-        smoothness={config.movement.smoothness},
-        damping={config.movement.damping}
-    )
+BEST_CONFIG = SpiralConfig(
+    base_radius={config.base_radius},
+    rotation_speed={config.rotation_speed},
+    spiral_tightness={config.spiral_tightness},
+    formation_weight={config.formation_weight},
+    velocity_weight={config.velocity_weight},
+    chase_radius={config.chase_radius},
+    chase_weight={config.chase_weight},
+    min_group_size={config.min_group_size},
+    health_aggression_scale={config.health_aggression_scale},
+    perception_radius={config.perception_radius},
+    damping={config.damping},
+    approach_speed={config.approach_speed}
 )
 
 # Create the best agent
-best_agent = create_swarm_agent(BEST_CONFIG)
+best_agent = create_spiral_agent(BEST_CONFIG)
 
 def act(state, team, key):
     return best_agent(state, team, key)
@@ -181,38 +170,13 @@ def act(state, team, key):
     results_path = f"results/agent_optimization_{timestamp}.json"
     with open(results_path, "w") as f:
         json.dump({
-            "config": {
-                "formation": {
-                    "scale": config.formation.scale,
-                    "shape": config.formation.shape,
-                    "weight": config.formation.weight
-                },
-                "combat": {
-                    "aggressiveness": config.combat.aggressiveness,
-                    "attack_threshold": config.combat.attack_threshold,
-                    "retreat_threshold": config.combat.retreat_threshold,
-                    "weight": config.combat.weight
-                },
-                "movement": {
-                    "max_speed": config.movement.max_speed,
-                    "smoothness": config.movement.smoothness,
-                    "damping": config.movement.damping
-                }
-            },
+            "config": config.__dict__,
             "reward": reward,
             "timestamp": timestamp
         }, f, indent=2)
 
 if __name__ == "__main__":
-    best_config = optimize_swarm(num_iterations=100)
+    best_config = optimize_swarm()
     print("\nBest configuration:")
-    print(f"Formation scale: {best_config.formation.scale:.4f}")
-    print(f"Formation shape: {best_config.formation.shape:.4f}")
-    print(f"Formation weight: {best_config.formation.weight:.4f}")
-    print(f"Aggressiveness: {best_config.combat.aggressiveness:.4f}")
-    print(f"Attack threshold: {best_config.combat.attack_threshold:.4f}")
-    print(f"Retreat threshold: {best_config.combat.retreat_threshold:.4f}")
-    print(f"Combat weight: {best_config.combat.weight:.4f}")
-    print(f"Max speed: {best_config.movement.max_speed:.4f}")
-    print(f"Smoothness: {best_config.movement.smoothness:.4f}")
-    print(f"Damping: {best_config.movement.damping:.4f}")
+    for field, value in best_config.__dict__.items():
+        print(f"{field}: {value:.4f}")
