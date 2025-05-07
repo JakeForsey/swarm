@@ -5,7 +5,8 @@ import jax.numpy as jnp
 
 from swarm.env import State
 
-SPEED = 0.2
+ATTACK_SPEED = 0.22
+FLEE_SPEED = 0.2
 
 def act(state: State, team: int, key: jax.random.PRNGKey) -> Tuple[jnp.ndarray, jnp.ndarray]:
     if team == 1:
@@ -53,8 +54,9 @@ def _act(
     nearest_enemy_dx = dx[batch_idx, agent_idx, nearest_enemy_idx]
     nearest_enemy_dy = dy[batch_idx, agent_idx, nearest_enemy_idx]
     
-    move_speed = jnp.where(should_attack, -SPEED, SPEED)
-    dx = nearest_enemy_dx * move_speed
-    dy = nearest_enemy_dy * move_speed
+    move_speed = jnp.where(should_attack, -ATTACK_SPEED, FLEE_SPEED)
+
+    dx_out = nearest_enemy_dx * move_speed 
+    dy_out = nearest_enemy_dy * move_speed
             
-    return dx, dy
+    return dx_out, dy_out
