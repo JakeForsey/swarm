@@ -1,11 +1,9 @@
-import importlib
-import pkgutil
 import time
 
 import jax
 import jax.numpy as jnp
 
-from swarm import agents as agents_module
+from swarm.agents import load_agents
 from swarm.env import SwarmEnv
 from swarm.batch import batch_act, compute_agent_schedules
 
@@ -13,11 +11,7 @@ from swarm.batch import batch_act, compute_agent_schedules
 def main():
     num_rounds_per_matchup = 512
     episode_length = 128
-
-    agents = [
-        importlib.import_module(f"swarm.agents.{info.name}")
-        for info in pkgutil.iter_modules(agents_module.__path__)
-    ]
+    agents = load_agents()
     num_agents = len(agents)
     agent_schedules1 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 1)
     agent_schedules2 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 2)
