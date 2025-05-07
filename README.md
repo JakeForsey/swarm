@@ -49,17 +49,17 @@ random | ![](results/animations/random_vs_health_swarm.gif) | ![](results/animat
 
 1. **Run a Round Robin Tournament**
 ```bash
-python -m -O swarm.run
+python -O -m swarm.run
 ```
 
 2. **Optimize Configurable Agent**
 ```bash
-python -m -O swarm.optimize
+python -O -m swarm.optimize
 ```
 
 3. **Create Animation**
 ```bash
-python -m -O swarm.animate <agent1> <agent2>
+python -O -m swarm.animate <agent1> <agent2>
 ```
 
 ## Dependencies
