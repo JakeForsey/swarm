@@ -1,5 +1,4 @@
 import importlib
-from itertools import combinations
 import pkgutil
 import time
 
@@ -7,70 +6,8 @@ import jax
 import jax.numpy as jnp
 
 from swarm import agents as agents_module
-from swarm.env import SwarmEnv, State
-
-
-def compute_agent_schedules(num_agents: int, rounds_per_matchup: int, team: int) -> jnp.ndarray:
-    matchups = list(combinations(range(num_agents), 2))
-    schedule = jnp.zeros((num_agents, len(matchups)), dtype=bool)
-    for ii, (i, j) in enumerate(matchups):
-        if team == 1:
-            schedule = schedule.at[j, ii].set(True)
-        else:
-            schedule = schedule.at[i, ii].set(True)
-    schedule = jnp.repeat(schedule, rounds_per_matchup, axis=1)
-    return schedule
-
-
-@jax.jit
-def get_indices(mask: jnp.ndarray) -> jnp.ndarray:
-    """Convert boolean mask to integer indices."""
-    return jnp.nonzero(mask, size=mask.shape[0])[0]
-
-
-@jax.jit
-def get_active_states(state: State, indices: jnp.ndarray) -> State:
-    """Get states for active agents only."""
-    return jax.tree.map(lambda x: x[indices], state)
-
-
-@jax.jit
-def place_actions(x_actions: jnp.ndarray, y_actions: jnp.ndarray, 
-                 agent_x: jnp.ndarray, agent_y: jnp.ndarray,
-                 indices: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Place agent actions in the correct positions."""
-    x_actions = x_actions.at[indices].set(agent_x)
-    y_actions = y_actions.at[indices].set(agent_y)
-    return x_actions, y_actions
-
-
-def batch_act(state: State, agents: list, agent_schedules: jnp.ndarray, team: int, key: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
-    batch_size, num_agents = state.x1.shape if team == 1 else state.x2.shape
-    
-    # Initialize action arrays with zeros
-    x_actions = jnp.zeros((batch_size, num_agents))
-    y_actions = jnp.zeros((batch_size, num_agents))
-    
-    # Split key for each agent
-    keys = jax.random.split(key, len(agents))
-    
-    for i, (agent, agent_key) in enumerate(zip(agents, keys)):
-        # Get the agents actions for the rounds where it's active
-        mask = agent_schedules[i]
-        indices = get_indices(mask)
-        
-        # Get active states and compute actions
-        active_states = get_active_states(state, indices)
-        agent_x_actions, agent_y_actions = agent.act(active_states, team, agent_key)
-        
-        # Place actions in correct positions
-        x_actions, y_actions = place_actions(
-            x_actions, y_actions, 
-            agent_x_actions, agent_y_actions, 
-            indices,
-        )
-    
-    return x_actions, y_actions
+from swarm.env import SwarmEnv
+from swarm.batch import batch_act, compute_agent_schedules
 
 
 def main():
