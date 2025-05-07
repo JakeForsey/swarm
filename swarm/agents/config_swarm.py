@@ -181,51 +181,23 @@ def create_swarm_agent(config: SwarmConfig) -> Callable:
     
     return act
 
-# Example configurations
-def create_defensive_swarm() -> Callable:
-    """Create a defensive swarm configuration."""
-    config = SwarmConfig(
-        formation=FormationConfig(scale=0.8, shape=0.2, weight=1.2),
-        combat=CombatConfig(aggressiveness=0.3, attack_threshold=0.4, retreat_threshold=0.3, weight=0.8),
-        movement=MovementConfig(max_speed=0.008, smoothness=0.9, damping=0.15)
-    )
-    return create_swarm_agent(config)
-
-def create_aggressive_swarm() -> Callable:
-    """Create an aggressive swarm configuration."""
-    config = SwarmConfig(
-        formation=FormationConfig(scale=0.6, shape=0.4, weight=0.8),
-        combat=CombatConfig(aggressiveness=0.8, attack_threshold=0.2, retreat_threshold=0.1, weight=1.2),
-        movement=MovementConfig(max_speed=0.012, smoothness=0.7, damping=0.08)
-    )
-    return create_swarm_agent(config)
-
-def create_balanced_swarm() -> Callable:
-    """Create a balanced swarm configuration."""
-    config = SwarmConfig(
-        formation=FormationConfig(scale=0.7, shape=0.3, weight=1.0),
-        combat=CombatConfig(aggressiveness=0.6, attack_threshold=0.3, retreat_threshold=0.2, weight=1.0),
-        movement=MovementConfig(max_speed=0.01, smoothness=0.8, damping=0.1)
-    )
-    return create_swarm_agent(config)
-
 # Best configuration from optimization
 BEST_CONFIG = SwarmConfig(
     formation=FormationConfig(
-        scale=0.3732229409068673,
-        shape=0.4951769101112702,
-        weight=0.5343885211152184
+        scale=0.4215089703802877,
+        shape=0.4341048247374583,
+        weight=0.5130103185970559
     ),
     combat=CombatConfig(
-        aggressiveness=0.8455922412472694,
-        attack_threshold=0.2517559963200034,
-        retreat_threshold=0.23250445687079638,
-        weight=0.811711076089411
+        aggressiveness=0.8948885537253334,
+        attack_threshold=0.2965632033074559,
+        retreat_threshold=0.2808397348116461,
+        weight=0.7609227538346741
     ),
     movement=MovementConfig(
-        max_speed=0.010200680211778107,
-        smoothness=0.7913485977701479,
-        damping=0.07772816832882906
+        max_speed=0.009195344228012768,
+        smoothness=0.8184233026512157,
+        damping=0.07320457481218803
     )
 )
 
