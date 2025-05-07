@@ -9,20 +9,20 @@ from swarm.env import State
 class HunterConfig:
     # Formation parameters
     formation_scale: float = 0.2  # Tighter formation
-    formation_weight: float = 0.4  # Less cohesion for more aggressive moves
+    formation_weight: float = 0.6  # More cohesion to prevent isolation
     
     # Movement parameters
-    attack_speed: float = 0.25  # Faster attack speed
-    pursue_speed: float = 0.2   # Faster pursuit
-    retreat_speed: float = 0.15  # Faster retreat
+    attack_speed: float = 0.2  # Slightly slower but more controlled
+    pursue_speed: float = 0.18  # Close to attack speed for better coordination
+    retreat_speed: float = 0.12  # Slower retreat to stay with group
     
     # Tactical parameters
     focus_fire_radius: float = 0.15  # Tighter focus fire
-    bait_threshold: float = 0.8  # More agents can be bait
+    bait_threshold: float = 0.85  # Fewer bait agents
     surround_radius: float = 0.25  # Tighter surround radius
     
     # Combat parameters
-    engage_threshold: float = 0.6  # More aggressive engagement
+    engage_threshold: float = 0.65  # More careful engagement
     disengage_threshold: float = 0.4  # Stay in fight longer
 
 def create_hunter_agent(config: HunterConfig = HunterConfig()):
@@ -38,19 +38,23 @@ def create_hunter_agent(config: HunterConfig = HunterConfig()):
         enemy_y = state.y2 if team == 1 else state.y1
         enemy_health = state.health2 if team == 1 else state.health1
 
-        # Find closest damaged enemy as target (combines damage and proximity)
-        enemy_health_matrix = enemy_health[:, :, None]  # Shape: (batch_size, num_enemies, 1)
-        dx_matrix = enemy_x[:, :, None] - own_x[:, None, :]  # Shape: (batch_size, num_enemies, num_agents)
-        dy_matrix = enemy_y[:, :, None] - own_y[:, None, :]
-        dist_matrix = jnp.sqrt(dx_matrix**2 + dy_matrix**2)
+        # Find a single primary target for all agents (most damaged and central)
+        enemy_health_sum = jnp.sum(enemy_health, axis=1, keepdims=True)  # Total health per enemy
+        enemy_center_x = jnp.mean(enemy_x, axis=1, keepdims=True)  # Center of enemy swarm
+        enemy_center_y = jnp.mean(enemy_y, axis=1, keepdims=True)
         
-        # Score combines health and distance (prefer damaged and close enemies)
-        target_scores = enemy_health_matrix + dist_matrix * 0.5
-        primary_target = jnp.argmin(target_scores, axis=1)  # Shape: (batch_size, num_agents)
+        # Distance from enemy center
+        dx_to_center = enemy_x - enemy_center_x
+        dy_to_center = enemy_y - enemy_center_y
+        dist_to_center = jnp.sqrt(dx_to_center**2 + dy_to_center**2)
         
-        # Calculate target positions for each agent
-        target_x = jnp.take_along_axis(enemy_x[:, :, None], primary_target[:, None, :], axis=1)[:, 0, :]
-        target_y = jnp.take_along_axis(enemy_y[:, :, None], primary_target[:, None, :], axis=1)[:, 0, :]
+        # Score combines health and centrality
+        target_scores = enemy_health + dist_to_center * 0.3
+        primary_target = jnp.argmin(target_scores, axis=1, keepdims=True)
+        
+        # Calculate target positions
+        target_x = jnp.take_along_axis(enemy_x, primary_target, axis=1)  # Shape: (batch_size, 1)
+        target_y = jnp.take_along_axis(enemy_y, primary_target, axis=1)  # Shape: (batch_size, 1)
         
         dx_to_target = target_x - own_x
         dy_to_target = target_y - own_y
@@ -60,16 +64,22 @@ def create_hunter_agent(config: HunterConfig = HunterConfig()):
         is_bait = own_health > config.bait_threshold
         
         # Calculate intercept positions (predict enemy movement)
-        intercept_x = target_x + dx_to_target * 0.2  # Predict enemy movement
-        intercept_y = target_y + dy_to_target * 0.2
+        intercept_x = target_x + dx_to_target * 0.15  # Slightly reduced prediction
+        intercept_y = target_y + dy_to_target * 0.15
+        
+        # Calculate surround positions
+        num_agents = own_x.shape[1]
+        angles = jnp.linspace(0, 2*jnp.pi, num_agents, endpoint=False)
+        surround_x = target_x + config.surround_radius * jnp.cos(angles)[None, :]
+        surround_y = target_y + config.surround_radius * jnp.sin(angles)[None, :]
         
         # Calculate move directions
         dx = jnp.where(is_bait, 
                       dx_to_target,  # Bait moves directly at target
-                      intercept_x - own_x)  # Others move to intercept
+                      surround_x - own_x)  # Others move to surround positions
         dy = jnp.where(is_bait,
                       dy_to_target,
-                      intercept_y - own_y)
+                      surround_y - own_y)
         
         # Normalize directions
         magnitude = jnp.sqrt(dx**2 + dy**2) + 1e-10
@@ -89,7 +99,7 @@ def create_hunter_agent(config: HunterConfig = HunterConfig()):
         dx = dx * speed
         dy = dy * speed
         
-        # Add lighter formation cohesion
+        # Add formation cohesion
         center_x = jnp.mean(own_x, axis=1, keepdims=True)
         center_y = jnp.mean(own_y, axis=1, keepdims=True)
         dx = dx + config.formation_weight * (center_x - own_x)
@@ -107,4 +117,4 @@ default_agent = create_hunter_agent(DEFAULT_CONFIG)
 
 def act(state: State, team: int, key: jax.random.PRNGKey) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Main act function that uses the default configuration."""
-    return default_agent(state, team, key) 
+    return default_agent(state, team, key)
