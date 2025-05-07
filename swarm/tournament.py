@@ -1,5 +1,5 @@
 import time
-
+from typing import Callable
 import jax
 import jax.numpy as jnp
 
@@ -10,6 +10,9 @@ from swarm.batch import batch_act, compute_agent_schedules
 def run(num_rounds_per_matchup: int = 256, episode_length: int = 128):
     print("[init] Loading agents...")
     agents = load_agents()
+    return _run(agents, num_rounds_per_matchup, episode_length)
+
+def _run(agents: list[Callable], num_rounds_per_matchup: int = 256, episode_length: int = 128):
     num_agents = len(agents)
 
     print("[init] Computing agent schedules...")
@@ -39,15 +42,21 @@ def run(num_rounds_per_matchup: int = 256, episode_length: int = 128):
         
         if step == env.episode_length:
             # Create a dictionary of agent name -> reward
-            reward_summary = {}
+            reward_summary = []
             for i, agent in enumerate(agents):
+                agent_name = agent.__name__.split(".")[-1]
                 team1_reward = reward[agent_schedules1[i]]
                 team2_reward = -1 * reward[agent_schedules2[i]]
                 rewards = jnp.concatenate([team1_reward, team2_reward])
-                reward_summary[agent.__name__.split(".")[-1]] = rewards.mean()
+                reward_summary.append(
+                    {
+                        "name": agent_name,
+                        "reward": rewards.mean(),
+                    }
+                )
 
-            for agent, reward in sorted(reward_summary.items(), key=lambda x: x[1], reverse=True):
-                print(f"{agent:>20} reward: {reward:.2f}")
+            for summary in sorted(reward_summary, key=lambda x: x["reward"], reverse=True):
+                print(f"{summary['name']:>20} reward: {summary['reward']:.2f}")
     
     end = time.perf_counter()
     tournament_duration = end - start
@@ -55,3 +64,5 @@ def run(num_rounds_per_matchup: int = 256, episode_length: int = 128):
     print(f"[tournament] Tournament complete...")
     print(f"[tournament] Time taken: {tournament_duration:.2f} seconds")
     print(f"[tournament] Steps per second: {(env.episode_length * env.batch_size) / tournament_duration:,.0f}")
+
+    return reward_summary

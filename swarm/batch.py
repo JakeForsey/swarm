@@ -42,7 +42,25 @@ def compute_agent_schedules(num_agents: int, rounds_per_matchup: int, team: int)
         Boolean array of shape (num_agents, total_rounds) indicating which agents
         are active in each round
     """
-    matchups = list(combinations(range(num_agents), 2))
+    matchups = []
+
+    # pop_size = 64
+    # baseline_size = 5
+    # pop = list(range(pop_size))
+    # baseline = list(range(pop_size, pop_size + baseline_size))
+    # matchups = []
+    # for i in pop:
+    #     for j in baseline:
+    #         matchups.append((i, j))
+    #         matchups.append((j, i))
+
+    for i in range(num_agents):
+        for j in range(i + 1, num_agents):
+            matchups.append((i, j))
+            matchups.append((j, i))
+
+    # matchups = list(combinations(range(num_agents), 2))
+    
     schedule = jnp.zeros((num_agents, len(matchups)), dtype=bool)
     for ii, (i, j) in enumerate(matchups):
         if team == 1:
