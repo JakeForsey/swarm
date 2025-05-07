@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Agents modules (in `swarm/agents`) must implement: `def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:`
+- Agents should be concise, simple, performant
+- Prefer not using comments (add them only where really required)
+- Prefer not using doc strings (add them only in an agents act function)
+- These agents should only be a small handful of functions
+- A good example of an agent is [simple.py](mdc:swarm/agents/simple.py)
+- You can find the current agents rewards in [README.md](mdc:README.md) if you want to study well perfoming agents
