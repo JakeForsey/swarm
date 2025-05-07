@@ -184,20 +184,20 @@ def create_swarm_agent(config: SwarmConfig) -> Callable:
 # Best configuration from optimization
 BEST_CONFIG = SwarmConfig(
     formation=FormationConfig(
-        scale=0.4215089703802877,
-        shape=0.4341048247374583,
-        weight=0.5130103185970559
+        scale=0.22838001522636964,
+        shape=0.385398794029561,
+        weight=0.2238010236691683
     ),
     combat=CombatConfig(
-        aggressiveness=0.8948885537253334,
-        attack_threshold=0.2965632033074559,
-        retreat_threshold=0.2808397348116461,
-        weight=0.7609227538346741
+        aggressiveness=1.1672251553679267,
+        attack_threshold=0.357952049355146,
+        retreat_threshold=0.3258188515909997,
+        weight=0.8086085161922798
     ),
     movement=MovementConfig(
-        max_speed=0.009195344228012768,
-        smoothness=0.8184233026512157,
-        damping=0.07320457481218803
+        max_speed=0.012270015706612979,
+        smoothness=0.9792381288997192,
+        damping=0.11650352192738242
     )
 )
 
