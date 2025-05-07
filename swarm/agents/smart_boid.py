@@ -5,33 +5,34 @@ from swarm.env import State
 
 
 # Core boid parameters
-SEPARATION_RADIUS = 0.06  # Even tighter separation
-PERCEPTION_RADIUS = 0.15  # Smaller perception radius
-SEPARATION_WEIGHT = 0.03  # Stronger separation
-ALIGNMENT_WEIGHT = 0.03   # Stronger alignment
-COHESION_WEIGHT = 0.04    # Stronger cohesion
+SEPARATION_RADIUS = 0.08  # Slightly looser separation
+PERCEPTION_RADIUS = 0.2   # Larger perception radius
+SEPARATION_WEIGHT = 0.05  # Stronger separation
+ALIGNMENT_WEIGHT = 0.05   # Stronger alignment
+COHESION_WEIGHT = 0.06    # Stronger cohesion
 DAMPING = 0.1            # Velocity damping
 
 # Combat parameters
-CHASE_RADIUS = 0.2      # Shorter chase radius
-CHASE_WEIGHT = 0.04     # Stronger chase
-FLEE_RADIUS = 0.12      # Shorter flee radius
-FLEE_WEIGHT = 0.03      # Stronger flee
-MIN_GROUP_SIZE = 2      # Keep group size requirement
+CHASE_RADIUS = 0.25      # Larger chase radius
+CHASE_WEIGHT = 0.08      # Stronger chase
+FLEE_RADIUS = 0.15       # Larger flee radius
+FLEE_WEIGHT = 0.06       # Stronger flee
+MIN_GROUP_SIZE = 2       # Keep group size requirement
+HEALTH_THRESHOLD = 0.3   # Health threshold for aggression
 
 
 def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Smart boid agent that adapts its behavior based on health and group size.
     
     Strategy:
-    1. Maintains moderate formation (radius 0.15) with other boids
-    2. Uses balanced velocity matching (0.08) and damping (0.1)
+    1. Maintains moderate formation (radius 0.2) with other boids
+    2. Uses balanced velocity matching (0.05) and damping (0.1)
     3. Adapts combat behavior based on conditions:
-       - Aggressive when health > 0.4 and group size > 2
+       - Aggressive when health > 0.3 and group size > 2
        - Defensive when health < 0.3 or alone
        - Neutral otherwise
     4. Implements moderate chase radius (0.25) for engagement
-    5. Uses perception radius (0.3) for group awareness
+    5. Uses perception radius (0.2) for group awareness
     
     Parameters:
         state: Current game state containing positions, velocities, and health
@@ -48,6 +49,7 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
         vy = state.vy1
         enemy_x = state.x2
         enemy_y = state.y2
+        health = state.health1
     elif team == 2:
         x = state.x2
         y = state.y2
@@ -55,10 +57,11 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
         vy = state.vy2
         enemy_x = state.x1
         enemy_y = state.y1
+        health = state.health2
     else:
         raise ValueError(f"Invalid team: {team}")
     
-    return _act(x, y, vx, vy, enemy_x, enemy_y, key)
+    return _act(x, y, vx, vy, enemy_x, enemy_y, health, key)
 
 
 @jax.jit
@@ -66,6 +69,7 @@ def _act(
     x: jnp.ndarray, y: jnp.ndarray,
     vx: jnp.ndarray, vy: jnp.ndarray,
     enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
+    health: jnp.ndarray,
     key: jax.random.PRNGKey,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
@@ -138,17 +142,18 @@ def _act(
     closest_enemy_dx = enemy_dx[batch_idx, enemy_idx, agent_idx]
     closest_enemy_dy = enemy_dy[batch_idx, enemy_idx, agent_idx]
     
-    # Calculate group size advantage
+    # Calculate group size advantage and health-based aggression
     group_size = jnp.sum(ally_dist < PERCEPTION_RADIUS, axis=1)
     group_advantage = group_size > MIN_GROUP_SIZE
+    health_aggression = health > HEALTH_THRESHOLD
     
-    # Chase if we have group advantage and enemy is within range
-    chase_mask = (min_enemy_dist < CHASE_RADIUS) & group_advantage
+    # Chase if we have group advantage and good health
+    chase_mask = (min_enemy_dist < CHASE_RADIUS) & group_advantage & health_aggression
     x_action += -closest_enemy_dx * chase_mask * CHASE_WEIGHT
     y_action += -closest_enemy_dy * chase_mask * CHASE_WEIGHT
     
-    # Flee if we're outnumbered and enemy is too close
-    flee_mask = (min_enemy_dist < FLEE_RADIUS) & ~group_advantage
+    # Flee if we're outnumbered or low health and enemy is too close
+    flee_mask = (min_enemy_dist < FLEE_RADIUS) & (~group_advantage | ~health_aggression)
     x_action += closest_enemy_dx * flee_mask * FLEE_WEIGHT
     y_action += closest_enemy_dy * flee_mask * FLEE_WEIGHT
     
