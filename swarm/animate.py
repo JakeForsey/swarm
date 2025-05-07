@@ -16,6 +16,8 @@ from swarm.agents import squad_swarm
 from swarm.agents import center_swarm
 from swarm.agents import static_swarm
 from swarm.agents import train_swarm
+from swarm.agents import param_swarm
+from swarm.agents import config_swarm
 from swarm.env import SwarmEnv
 
 
@@ -36,8 +38,8 @@ class SwarmSimulator:
     def update(self, frame):
         """Update function for animation."""
         team1_key, team2_key, self.key = jax.random.split(self.key, 3)
-        agent1 = train_swarm
-        agent2 = vortex_swarm
+        agent1 = config_swarm
+        agent2 = boid
         x_action1, y_action1 = agent1.act(self.state, team=1, key=team1_key)
         x_action2, y_action2 = agent2.act(self.state, team=2, key=team2_key)
 
