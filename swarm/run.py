@@ -12,6 +12,10 @@ def main():
     num_rounds_per_matchup = 512
     episode_length = 128
     agents = load_agents()
+
+    # num_rounds_per_matchup = 1024 * 64
+    # agents = [agent for agent in agents if agent.__name__.split(".")[-1] in ("random", "health_swarm")]
+
     num_agents = len(agents)
     agent_schedules1 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 1)
     agent_schedules2 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 2)
@@ -24,6 +28,14 @@ def main():
     print(f"Num rounds per matchup: {num_rounds_per_matchup}")
     print(f"Episode length: {episode_length}")
 
+    # Warmup step:
+    print("Jit and warmup...")
+    x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, jax.random.PRNGKey(0))
+    x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, jax.random.PRNGKey(0))
+    state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
+    state = env.reset()
+
+    # Run the round robin tournament:
     start = time.perf_counter()
     keys1 = jax.random.split(jax.random.PRNGKey(0), env.episode_length)
     keys2 = jax.random.split(jax.random.PRNGKey(1), env.episode_length)
