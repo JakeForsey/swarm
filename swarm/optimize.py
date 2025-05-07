@@ -10,7 +10,7 @@ import jax.numpy as jnp
 
 from swarm.env import SwarmEnv
 from swarm.batch import batch_act, compute_agent_schedules
-from swarm import agents as agents_module
+from swarm.agents import load_agents
 from swarm.agents.spiral_swarm import SpiralConfig, create_spiral_agent
 
 def create_config_from_params(params: Dict[str, float]) -> SpiralConfig:
@@ -54,10 +54,7 @@ def evaluate_params(**params: Dict[str, float]) -> float:
     agent = Agent()
 
     # Load opponent agents
-    opponents = [
-        importlib.import_module(f"swarm.agents.{info.name}")
-        for info in pkgutil.iter_modules(agents_module.__path__)
-    ]
+    opponents = load_agents()
     agents = [agent] + opponents
     num_agents = len(agents)
         
