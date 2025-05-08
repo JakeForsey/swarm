@@ -1,6 +1,13 @@
 import argparse
 
-from swarm import tournament, animate
+import jax
+
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
+jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
+jax.config.update("jax_persistent_cache_enable_xla_caches", "xla_gpu_per_fusion_autotune_cache_dir")
+
+from swarm import tournament, animate, vibe
 
 DEFAULT_EPISODE_LENGTH = 128
 DEFAULT_NUM_ROUNDS_PER_MATCHUP = 256
@@ -36,12 +43,16 @@ def main():
     animate_parser.add_argument("agent2", type=str, default="random")
     add_episode_length_argument(animate_parser)
 
+    vibe_parser = subparsers.add_parser("vibe", help="Vibe")
+
     args = parser.parse_args()
 
     if args.command == "tournament":
         tournament.run(args.num_rounds_per_matchup, args.episode_length)
     elif args.command == "animate":
         animate.run(args.agent1, args.agent2, args.episode_length)
+    elif args.command == "vibe":
+        vibe.run()
 
 if __name__ == "__main__":
     main()

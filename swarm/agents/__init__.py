@@ -1,13 +1,15 @@
-import importlib
+from importlib import reload, import_module
 import pkgutil
 
-agents_module = importlib.import_module("swarm.agents")
+def reload_module(path):
+    return reload(import_module(path))
 
 def load_agents():
+    agents_module = import_module("swarm.agents")
     return [
-        importlib.import_module(f"swarm.agents.{info.name}")
+        reload_module(f"swarm.agents.{info.name}")
         for info in pkgutil.iter_modules(agents_module.__path__)
     ]
 
 def get_agent(name):
-    return importlib.import_module(f"swarm.agents.{name}")
+    return reload_module(f"swarm.agents.{name}")
