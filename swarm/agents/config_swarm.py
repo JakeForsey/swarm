@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 from typing import Tuple, Dict, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from swarm.env import State
 
 @dataclass
@@ -29,9 +29,9 @@ class MovementConfig:
 @dataclass
 class SwarmConfig:
     """Complete configuration for the swarm agent"""
-    formation: FormationConfig = FormationConfig()
-    combat: CombatConfig = CombatConfig()
-    movement: MovementConfig = MovementConfig()
+    formation: FormationConfig = field(default_factory=FormationConfig)
+    combat: CombatConfig = field(default_factory=CombatConfig)
+    movement: MovementConfig = field(default_factory=MovementConfig)
 
 def compute_formation_forces(
     ally_x: jnp.ndarray,
