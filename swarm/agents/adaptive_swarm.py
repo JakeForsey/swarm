@@ -1,9 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 # Formation parameters
 FORMATION_CENTER_X = 0.5
 FORMATION_CENTER_Y = 0.5
@@ -19,8 +16,21 @@ MIN_GROUP_SIZE = 2  # Lower group size requirement
 HEALTH_THRESHOLD = 0.4  # Lower health threshold for aggression
 PERCEPTION_RADIUS = 0.25  # Smaller perception radius
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Adaptive swarm agent that balances formation and combat based on conditions.
     
     Strategy:
@@ -41,43 +51,13 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        health = state.health1
-        enemy_x = state.x2
-        enemy_y = state.y2
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vx2
-        health = state.health2
-        enemy_x = state.x1
-        enemy_y = state.y1
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy, health, enemy_x, enemy_y, key)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    health: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
-    key: jax.random.PRNGKey,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(x)
-    y_action = jnp.zeros_like(y)
+    x_action = jnp.zeros_like(ally_x)
+    y_action = jnp.zeros_like(ally_y)
     
     # Calculate positions relative to formation center
-    dx = x - FORMATION_CENTER_X
-    dy = y - FORMATION_CENTER_Y
+    dx = ally_x - FORMATION_CENTER_X
+    dy = ally_y - FORMATION_CENTER_Y
     
     # Handle wrapping by finding shortest path to center
     dx = jnp.where(dx > 0.5, dx - 1.0, dx)
@@ -86,7 +66,7 @@ def _act(
     dy = jnp.where(dy < -0.5, dy + 1.0, dy)
     
     # Calculate target positions on formation circle
-    num_agents = x.shape[1]
+    num_agents = ally_x.shape[1]
     target_angles = jnp.linspace(0, 2 * jnp.pi, num_agents, endpoint=False)
     target_dx = FORMATION_RADIUS * jnp.cos(target_angles)
     target_dy = FORMATION_RADIUS * jnp.sin(target_angles)
@@ -96,8 +76,8 @@ def _act(
     formation_dy = target_dy - dy
     
     # Calculate velocity matching
-    velocity_match_x = -vx  # Damp current velocity
-    velocity_match_y = -vy
+    velocity_match_x = -ally_vx  # Damp current velocity
+    velocity_match_y = -ally_vy
     
     # Add formation and velocity matching forces
     x_action += formation_dx * FORMATION_WEIGHT
@@ -106,13 +86,13 @@ def _act(
     y_action += velocity_match_y * VELOCITY_WEIGHT
     
     # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
     # Combat behavior
     # Calculate distances to enemies
-    enemy_dx = x[:, None, :] - enemy_x[:, :, None]
-    enemy_dy = y[:, None, :] - enemy_y[:, :, None]
+    enemy_dx = ally_x[:, None, :] - enemy_x[:, :, None]
+    enemy_dy = ally_y[:, None, :] - enemy_y[:, :, None]
     
     # Handle wrapping for enemy distances
     enemy_dx = jnp.where(enemy_dx > 0.5, enemy_dx - 1.0, enemy_dx)
@@ -127,9 +107,9 @@ def _act(
     closest_enemy_idx = jnp.argmin(enemy_dist, axis=1)
     
     # Get relative positions to closest enemies
-    batch_idx = jnp.arange(x.shape[0])[:, None]
+    batch_idx = jnp.arange(ally_x.shape[0])[:, None]
     enemy_idx = closest_enemy_idx
-    agent_idx = jnp.arange(x.shape[1])[None, :]
+    agent_idx = jnp.arange(ally_x.shape[1])[None, :]
     
     closest_enemy_dx = enemy_dx[batch_idx, enemy_idx, agent_idx]
     closest_enemy_dy = enemy_dy[batch_idx, enemy_idx, agent_idx]
@@ -137,7 +117,7 @@ def _act(
     # Calculate group size and health-based aggression
     group_size = jnp.sum(enemy_dist < PERCEPTION_RADIUS, axis=1)
     group_advantage = group_size > MIN_GROUP_SIZE
-    health_aggression = health > HEALTH_THRESHOLD
+    health_aggression = ally_health > HEALTH_THRESHOLD
     
     # Chase if we have group advantage and good health
     chase_mask = (min_enemy_dist < CHASE_RADIUS) & group_advantage & health_aggression

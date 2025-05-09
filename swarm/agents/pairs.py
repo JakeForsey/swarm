@@ -3,33 +3,19 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Moves agents in pairs with coordinated random movement and convergence."""
-    if team == 1:
-        ally_x, ally_y = state.x1, state.y1
-        vx, vy = state.vx1, state.vy1
-        ally_health = state.health1
-        enemy_x, enemy_y = state.x2, state.y2
-        enemy_health = state.health2
-    else:
-        ally_x, ally_y = state.x2, state.y2
-        vx, vy = state.vx2, state.vy2
-        ally_health = state.health2
-        enemy_x, enemy_y = state.x1, state.y1
-        enemy_health = state.health1
-
-    dx, dy = _act(ally_x, ally_y, ally_health, enemy_x, enemy_y, enemy_health)
-    return dx - vx, dy - vy
-
 @jax.jit
-def _act(
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
     ally_x: jnp.ndarray,
     ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
     ally_health: jnp.ndarray,
-    enemy_x: jnp.ndarray,
     enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
     enemy_health: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     batch_size, num_allies = ally_x.shape
@@ -82,5 +68,4 @@ def _act(
         jnp.concatenate([combat_dy, combat_dy], axis=1),
         jnp.concatenate([-pairs_dy, pairs_dy], axis=1),
     )
-
-    return dx, dy
+    return dx - ally_x, dy - ally_vy

@@ -1,9 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 # Formation parameters
 RING_CENTER_X = 0.5  # Fixed center X coordinate
 RING_CENTER_Y = 0.5  # Fixed center Y coordinate
@@ -15,8 +12,21 @@ FORMATION_WEIGHT = 0.02  # Weight for maintaining formation
 RETREAT_WEIGHT = 0.03  # Weight for retreating to center
 RANDOM_WEIGHT = 0.001  # Small random movement for exploration
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Clusters agent that forms multiple independent groups for coordinated movement.
     
     Strategy:
@@ -37,38 +47,13 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        health = state.health1
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-        health = state.health2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy, health, key)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    health: jnp.ndarray,
-    key: jax.random.PRNGKey,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(vx)
-    y_action = jnp.zeros_like(vy)
+    x_action = jnp.zeros_like(ally_vx)
+    y_action = jnp.zeros_like(ally_vy)
     
     # Calculate positions relative to fixed center
-    dx = x - RING_CENTER_X
-    dy = y - RING_CENTER_Y
+    dx = ally_x - RING_CENTER_X
+    dy = ally_y - RING_CENTER_Y
     
     # Handle wrapping by finding shortest path to center
     dx = jnp.where(dx > 0.5, dx - 1.0, dx)
@@ -81,7 +66,7 @@ def _act(
     angle = jnp.arctan2(dy, dx)
     
     # Calculate target positions on the ring
-    num_agents = x.shape[1]
+    num_agents = ally_x.shape[1]
     target_angles = jnp.linspace(0, 2 * jnp.pi, num_agents, endpoint=False)
     target_dx = RING_RADIUS * jnp.cos(target_angles)
     target_dy = RING_RADIUS * jnp.sin(target_angles)
@@ -93,8 +78,8 @@ def _act(
     y_action += formation_dy * FORMATION_WEIGHT
     
     # Health-based retreat
-    low_health_mask = health < RETREAT_HEALTH_THRESHOLD
-    retreat_scale = (RETREAT_HEALTH_THRESHOLD - health) / RETREAT_HEALTH_THRESHOLD
+    low_health_mask = ally_health < RETREAT_HEALTH_THRESHOLD
+    retreat_scale = (RETREAT_HEALTH_THRESHOLD - ally_health) / RETREAT_HEALTH_THRESHOLD
     
     # Retreat towards center
     retreat_dx = -dx / (dist + 1e-6) * RETREAT_SPEED
@@ -105,8 +90,8 @@ def _act(
     y_action += retreat_dy * low_health_mask * retreat_scale * RETREAT_WEIGHT
     
     # Maintain minimum spacing between agents
-    agent_dx = x[:, None, :] - x[:, :, None]
-    agent_dy = y[:, None, :] - y[:, :, None]
+    agent_dx = ally_x[:, None, :] - ally_x[:, :, None]
+    agent_dy = ally_y[:, None, :] - ally_y[:, :, None]
     
     # Handle wrapping for inter-agent distances
     agent_dx = jnp.where(agent_dx > 0.5, agent_dx - 1.0, agent_dx)
@@ -126,7 +111,7 @@ def _act(
     
     # Add small random movement for exploration
     xkey, ykey, _ = jax.random.split(key, 3)
-    x_action += jax.random.uniform(xkey, x.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
-    y_action += jax.random.uniform(ykey, y.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
+    x_action += jax.random.uniform(xkey, ally_x.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
+    y_action += jax.random.uniform(ykey, ally_y.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
     
     return x_action, y_action 

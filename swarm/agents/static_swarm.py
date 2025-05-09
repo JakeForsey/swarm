@@ -1,14 +1,23 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
-# Movement parameters
 DAMPING = 0.2  # Very strong damping to prevent any movement
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Static swarm agent that keeps all agents exactly where they start.
     
     Strategy:
@@ -25,28 +34,12 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        vx = state.vx1
-        vy = state.vy1
-    elif team == 2:
-        vx = state.vx2
-        vy = state.vy2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(vx, vy)
-
-
-@jax.jit
-def _act(
-    vx: jnp.ndarray, vy: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(vx)
-    y_action = jnp.zeros_like(vy)
+    x_action = jnp.zeros_like(ally_vx)
+    y_action = jnp.zeros_like(ally_vy)
     
     # Apply strong damping to prevent any movement
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
-    return x_action, y_action 
+    return x_action, y_action

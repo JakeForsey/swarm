@@ -1,9 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 # Formation parameters
 FORMATION_CENTER_X = 0.5
 FORMATION_CENTER_Y = 0.5
@@ -14,8 +11,21 @@ DAMPING = 0.1  # Velocity damping factor
 RETREAT_HEALTH_THRESHOLD = 0.4
 RETREAT_WEIGHT = 0.1  # Retreat weight
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Ring swarm agent that forms a static ring formation with health-based retreat.
     
     Strategy:
@@ -33,37 +43,13 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        health = state.health1
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-        health = state.health2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy, health)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(x)
-    y_action = jnp.zeros_like(y)
+    x_action = jnp.zeros_like(ally_x)
+    y_action = jnp.zeros_like(ally_y)
     
     # Calculate positions relative to formation center
-    dx = x - FORMATION_CENTER_X
-    dy = y - FORMATION_CENTER_Y
+    dx = ally_x - FORMATION_CENTER_X
+    dy = ally_y - FORMATION_CENTER_Y
     
     # Handle wrapping by finding shortest path to center
     dx = jnp.where(dx > 0.5, dx - 1.0, dx)
@@ -72,7 +58,7 @@ def _act(
     dy = jnp.where(dy < -0.5, dy + 1.0, dy)
     
     # Calculate target positions on formation circle using agent indices
-    num_agents = x.shape[1]
+    num_agents = ally_x.shape[1]
     agent_indices = jnp.arange(num_agents)
     target_angles = 2 * jnp.pi * agent_indices / num_agents
     
@@ -94,16 +80,16 @@ def _act(
     formation_dy = target_dy - dy
     
     # Calculate velocity matching
-    velocity_match_x = target_vx - vx
-    velocity_match_y = target_vy - vy
+    velocity_match_x = target_vx - ally_vx
+    velocity_match_y = target_vy - ally_vy
     
     # Calculate retreat movement (towards center)
     retreat_dx = -dx
     retreat_dy = -dy
     
     # Apply movement based on health
-    low_health_mask = health < RETREAT_HEALTH_THRESHOLD
-    retreat_scale = (RETREAT_HEALTH_THRESHOLD - health) / RETREAT_HEALTH_THRESHOLD
+    low_health_mask = ally_health < RETREAT_HEALTH_THRESHOLD
+    retreat_scale = (RETREAT_HEALTH_THRESHOLD - ally_health) / RETREAT_HEALTH_THRESHOLD
     
     # Combine formation and retreat movements
     x_action += formation_dx * FORMATION_WEIGHT * (1 - low_health_mask)
@@ -114,7 +100,7 @@ def _act(
     y_action += retreat_dy * RETREAT_WEIGHT * low_health_mask * retreat_scale
     
     # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
     return x_action, y_action

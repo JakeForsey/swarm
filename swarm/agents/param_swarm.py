@@ -1,9 +1,5 @@
 import jax
 import jax.numpy as jnp
-from jax import nn
-
-from swarm.env import State
-
 
 # Behavior parameters
 FORMATION_SCALE = 0.7  # How tightly agents cluster (0 = spread, 1 = tight)
@@ -17,8 +13,21 @@ RETREAT_THRESHOLD = 0.2  # Health threshold to start retreating
 MAX_SPEED = 0.01
 DAMPING = 0.1
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Parametric swarm agent with tunable behavior.
     
     Strategy:
@@ -34,46 +43,6 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        ally_x = state.x1
-        ally_y = state.y1
-        ally_vx = state.vx1
-        ally_vy = state.vy1
-        ally_health = state.health1
-        enemy_x = state.x2
-        enemy_y = state.y2
-        enemy_vx = state.vx2
-        enemy_vy = state.vy2
-        enemy_health = state.health2
-    else:
-        ally_x = state.x2
-        ally_y = state.y2
-        ally_vx = state.vx2
-        ally_vy = state.vy2
-        ally_health = state.health2
-        enemy_x = state.x1
-        enemy_y = state.y1
-        enemy_vx = state.vx1
-        enemy_vy = state.vy1
-        enemy_health = state.health1
-    
-    return _act(
-        ally_x, ally_y, ally_vx, ally_vy, ally_health,
-        enemy_x, enemy_y, enemy_vx, enemy_vy, enemy_health,
-        key
-    )
-
-
-@jax.jit
-def _act(
-    ally_x: jnp.ndarray, ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray, ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
-    enemy_vx: jnp.ndarray, enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-    key: jax.random.PRNGKey,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     batch_size, num_agents = ally_x.shape
     
     # Shape assertions for input arrays

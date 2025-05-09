@@ -3,7 +3,6 @@ import jax.numpy as jnp
 
 from swarm.env import State
 
-
 # Core boid parameters
 SEPARATION_RADIUS = 0.08  # Slightly looser separation
 PERCEPTION_RADIUS = 0.2   # Larger perception radius
@@ -20,8 +19,21 @@ FLEE_WEIGHT = 0.06       # Stronger flee
 MIN_GROUP_SIZE = 2       # Keep group size requirement
 HEALTH_THRESHOLD = 0.3   # Health threshold for aggression
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Smart boid agent that adapts its behavior based on health and group size.
     
     Strategy:
@@ -42,47 +54,17 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        enemy_x = state.x2
-        enemy_y = state.y2
-        health = state.health1
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-        enemy_x = state.x1
-        enemy_y = state.y1
-        health = state.health2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy, enemy_x, enemy_y, health, key)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
-    health: jnp.ndarray,
-    key: jax.random.PRNGKey,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(x)
-    y_action = jnp.zeros_like(y)
+    x_action = jnp.zeros_like(ally_x)
+    y_action = jnp.zeros_like(ally_y)
     
     # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
     # Calculate distances to allies
-    ally_dx = x[:, None, :] - x[:, :, None]
-    ally_dy = y[:, None, :] - y[:, :, None]
+    ally_dx = ally_x[:, None, :] - ally_x[:, :, None]
+    ally_dy = ally_y[:, None, :] - ally_y[:, :, None]
     
     # Handle wrapping for inter-agent distances
     ally_dx = jnp.where(ally_dx > 0.5, ally_dx - 1.0, ally_dx)
@@ -99,28 +81,28 @@ def _act(
     
     # 2. Alignment with nearby allies
     alignment_mask = jnp.tril((ally_dist < PERCEPTION_RADIUS) & (ally_dist > SEPARATION_RADIUS), -1)
-    vx_total = jnp.sum(vx[:, None, :] * alignment_mask, axis=1)
-    vy_total = jnp.sum(vy[:, None, :] * alignment_mask, axis=1)
+    vx_total = jnp.sum(ally_vx[:, None, :] * alignment_mask, axis=1)
+    vy_total = jnp.sum(ally_vy[:, None, :] * alignment_mask, axis=1)
     alignment_count = jnp.sum(alignment_mask, axis=1)
-    vx_avg = jnp.where(alignment_count > 0, vx_total / alignment_count, vx)
-    vy_avg = jnp.where(alignment_count > 0, vy_total / alignment_count, vy)
-    x_action += (vx_avg - vx) * ALIGNMENT_WEIGHT
-    y_action += (vy_avg - vy) * ALIGNMENT_WEIGHT
+    vx_avg = jnp.where(alignment_count > 0, vx_total / alignment_count, ally_vx)
+    vy_avg = jnp.where(alignment_count > 0, vy_total / alignment_count, ally_vy)
+    x_action += (vx_avg - ally_vx) * ALIGNMENT_WEIGHT
+    y_action += (vy_avg - ally_vy) * ALIGNMENT_WEIGHT
     
     # 3. Cohesion with nearby allies
     cohesion_mask = jnp.tril(ally_dist < PERCEPTION_RADIUS, -1)
-    x_total = jnp.sum(x[:, None, :] * cohesion_mask, axis=1)
-    y_total = jnp.sum(y[:, None, :] * cohesion_mask, axis=1)
+    x_total = jnp.sum(ally_x[:, None, :] * cohesion_mask, axis=1)
+    y_total = jnp.sum(ally_y[:, None, :] * cohesion_mask, axis=1)
     cohesion_count = jnp.sum(cohesion_mask, axis=1)
-    x_avg = jnp.where(cohesion_count > 0, x_total / cohesion_count, x)
-    y_avg = jnp.where(cohesion_count > 0, y_total / cohesion_count, y)
-    x_action += (x_avg - x) * COHESION_WEIGHT
-    y_action += (y_avg - y) * COHESION_WEIGHT
+    x_avg = jnp.where(cohesion_count > 0, x_total / cohesion_count, ally_x)
+    y_avg = jnp.where(cohesion_count > 0, y_total / cohesion_count, ally_y)
+    x_action += (x_avg - ally_x) * COHESION_WEIGHT
+    y_action += (y_avg - ally_y) * COHESION_WEIGHT
     
     # 4. Combat behavior
     # Calculate distances to enemies
-    enemy_dx = x[:, None, :] - enemy_x[:, :, None]
-    enemy_dy = y[:, None, :] - enemy_y[:, :, None]
+    enemy_dx = ally_x[:, None, :] - enemy_x[:, :, None]
+    enemy_dy = ally_y[:, None, :] - enemy_y[:, :, None]
     
     # Handle wrapping for enemy distances
     enemy_dx = jnp.where(enemy_dx > 0.5, enemy_dx - 1.0, enemy_dx)
@@ -135,9 +117,9 @@ def _act(
     closest_enemy_idx = jnp.argmin(enemy_dist, axis=1)
     
     # Get relative positions to closest enemies
-    batch_idx = jnp.arange(x.shape[0])[:, None]
+    batch_idx = jnp.arange(ally_x.shape[0])[:, None]
     enemy_idx = closest_enemy_idx
-    agent_idx = jnp.arange(x.shape[1])[None, :]
+    agent_idx = jnp.arange(ally_x.shape[1])[None, :]
     
     closest_enemy_dx = enemy_dx[batch_idx, enemy_idx, agent_idx]
     closest_enemy_dy = enemy_dy[batch_idx, enemy_idx, agent_idx]
@@ -145,7 +127,7 @@ def _act(
     # Calculate group size advantage and health-based aggression
     group_size = jnp.sum(ally_dist < PERCEPTION_RADIUS, axis=1)
     group_advantage = group_size > MIN_GROUP_SIZE
-    health_aggression = health > HEALTH_THRESHOLD
+    health_aggression = ally_health > HEALTH_THRESHOLD
     
     # Chase if we have group advantage and good health
     chase_mask = (min_enemy_dist < CHASE_RADIUS) & group_advantage & health_aggression

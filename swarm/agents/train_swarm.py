@@ -1,9 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 # Formation parameters
 LINE_SPACING = 0.01  # Distance between consecutive agents along the line
 FORMATION_WEIGHT = 0.1  # Weight for maintaining line formation
@@ -14,8 +11,21 @@ DAMPING = 0.1  # Damping for stability
 CHASE_RADIUS = 0.25  # Radius to detect enemies
 CHASE_WEIGHT = 0.06  # Weight for chasing enemies
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Train swarm agent that forms a line from first alive agent to nearest enemy.
     
     Strategy:
@@ -34,49 +44,20 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        enemy_x = state.x2
-        enemy_y = state.y2
-        health = state.health1
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-        enemy_x = state.x1
-        enemy_y = state.y1
-        health = state.health2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy, enemy_x, enemy_y, health)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
-    health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    batch_size = x.shape[0]
-    num_agents = x.shape[1]
+    batch_size = ally_x.shape[0]
+    num_agents = ally_x.shape[1]
 
     # Initialize actions
-    x_action = jnp.zeros_like(x)
-    y_action = jnp.zeros_like(y)
+    x_action = jnp.zeros_like(ally_x)
+    y_action = jnp.zeros_like(ally_y)
     
     # Find first alive agent
-    alive = health > 0
+    alive = ally_health > 0
     first_alive_idx = jnp.argmax(alive, axis=1, keepdims=True)
     assert first_alive_idx.shape == (batch_size, 1), f"first_alive_idx.shape: {first_alive_idx.shape}, expected ({batch_size}, 1)"
     
-    first_alive_x = x[jnp.arange(batch_size), first_alive_idx[:, 0]]
-    first_alive_y = y[jnp.arange(batch_size), first_alive_idx[:, 0]]
+    first_alive_x = ally_x[jnp.arange(batch_size), first_alive_idx[:, 0]]
+    first_alive_y = ally_y[jnp.arange(batch_size), first_alive_idx[:, 0]]
     assert first_alive_x.shape == (batch_size, ), f"first_alive_x.shape: {first_alive_x.shape}, expected ({batch_size}, )"
     assert first_alive_y.shape == (batch_size, ), f"first_alive_y.shape: {first_alive_y.shape}, expected ({batch_size}, )"
     
@@ -127,8 +108,8 @@ def _act(
     target_y = jnp.mod(target_y, 1.0)
     
     # Calculate movement to target positions
-    dx = target_x - x
-    dy = target_y - y
+    dx = target_x - ally_x
+    dy = target_y - ally_y
         
     # Add formation movement
     x_action += dx * FORMATION_WEIGHT
@@ -139,17 +120,15 @@ def _act(
     y_action += line_dy[:, None] * CHASE_WEIGHT
     
     # Calculate average velocity of the swarm
-    avg_vx = jnp.mean(vx, axis=1, keepdims=True)
-    avg_vy = jnp.mean(vy, axis=1, keepdims=True)
+    avg_vx = jnp.mean(ally_vx, axis=1, keepdims=True)
+    avg_vy = jnp.mean(ally_vy, axis=1, keepdims=True)
     
     # Add velocity matching
-    x_action += (avg_vx - vx) * VELOCITY_WEIGHT
-    y_action += (avg_vy - vy) * VELOCITY_WEIGHT
+    x_action += (avg_vx - ally_vx) * VELOCITY_WEIGHT
+    y_action += (avg_vy - ally_vy) * VELOCITY_WEIGHT
     
     # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
     return x_action, y_action
-        
-    

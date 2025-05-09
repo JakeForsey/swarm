@@ -3,30 +3,23 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
 ATTACK_THRESHOLD = -0.00791715
 ATTACK_SPEED = 2.995118
 FLEE_SPEED = 0.13312322
 
-def act(state: State, team: int, key: jax.random.PRNGKey) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    if team == 1:
-        ally_x, ally_y = state.x1, state.y1
-        ally_health = state.health1
-        enemy_x, enemy_y = state.x2, state.y2
-        enemy_health = state.health2
-    else:
-        ally_x, ally_y = state.x2, state.y2
-        ally_health = state.health2
-        enemy_x, enemy_y = state.x1, state.y1
-        enemy_health = state.health1
-    return _act(ally_x, ally_y, ally_health, enemy_x, enemy_y, enemy_health)
-
 @jax.jit
-def _act(
-    ally_x: jnp.ndarray, ally_y: jnp.ndarray,
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
     ally_health: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
     enemy_health: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     batch_size, num_allies = ally_x.shape

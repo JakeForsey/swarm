@@ -1,6 +1,5 @@
 import jax
 import jax.numpy as jnp
-from itertools import combinations
 from swarm.env import State
 
 
@@ -30,7 +29,11 @@ def place_actions(
     return x_actions, y_actions
 
 
-def compute_agent_schedules(num_agents: int, rounds_per_matchup: int, team: int) -> jnp.ndarray:
+def compute_agent_schedules(
+    num_agents: int,
+    rounds_per_matchup: int,
+    team: int,
+) -> jnp.ndarray:
     """Compute the schedule of which agents are active in each round.
     
     Args:
@@ -103,11 +106,23 @@ def batch_act(
         # Get the agents actions for the rounds where it's active
         mask = agent_schedules[i]
         indices = get_indices(mask)
-        
+
         # Get active states and compute actions
         active_states = get_active_states(state, indices)
-        agent_x_actions, agent_y_actions = agent.act(active_states, team, agent_key)
-        
+        agent_x_actions, agent_y_actions = agent.act(
+            t=state.t,
+            key=agent_key,
+            ally_x=active_states.x1 if team == 1 else active_states.x2,
+            ally_y=active_states.y1 if team == 1 else active_states.y2,
+            ally_vx=active_states.vx1 if team == 1 else active_states.vx2,
+            ally_vy=active_states.vy1 if team == 1 else active_states.vy2,
+            ally_health=active_states.health1 if team == 1 else active_states.health2,
+            enemy_x=active_states.x1 if team == 2 else active_states.x2,
+            enemy_y=active_states.y1 if team == 2 else active_states.y2,
+            enemy_vx=active_states.vx1 if team == 2 else active_states.vx2,
+            enemy_vy=active_states.vy1 if team == 2 else active_states.vy2,
+            enemy_health=active_states.health1 if team == 2 else active_states.health2
+        )
         # Place actions in correct positions
         x_actions, y_actions = place_actions(
             x_actions, y_actions, 

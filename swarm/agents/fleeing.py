@@ -1,17 +1,27 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 COHESION_RADIUS = 0.2
 FLEE_RADIUS = 0.3
 FLEE_WEIGHT = 0.01
 COHESION_WEIGHT = 0.005
 RANDOM_WEIGHT = 0.001
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Fleeing agent that avoids enemies and maintains distance.
     
     Strategy:
@@ -29,48 +39,22 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-        enemy_x = state.x2
-        enemy_y = state.y2
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-        enemy_x = state.x1
-        enemy_y = state.y1
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    return _act(x, y, vx, vy, enemy_x, enemy_y, key)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-    enemy_x: jnp.ndarray, enemy_y: jnp.ndarray,
-    key: jax.random.PRNGKey,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(vx)
-    y_action = jnp.zeros_like(vy)
+    x_action = jnp.zeros_like(ally_vx)
+    y_action = jnp.zeros_like(ally_vy)
 
     # Calculate distances to enemies
-    enemy_dx = x[:, None, :] - enemy_x[:, :, None]
-    enemy_dy = y[:, None, :] - enemy_y[:, :, None]
+    enemy_dx = ally_x[:, None, :] - enemy_x[:, :, None]
+    enemy_dy = ally_y[:, None, :] - enemy_y[:, :, None]
     enemy_dist = jnp.sqrt(enemy_dx**2 + enemy_dy**2)
 
     # Flee behavior - move away from closest enemy
     min_enemy_dist = jnp.min(enemy_dist, axis=1)
     closest_enemy_idx = jnp.argmin(enemy_dist, axis=1)
     
-    batch_idx = jnp.arange(x.shape[0])[:, None]
+    batch_idx = jnp.arange(ally_x.shape[0])[:, None]
     enemy_idx = closest_enemy_idx
-    agent_idx = jnp.arange(x.shape[1])[None, :]
+    agent_idx = jnp.arange(ally_x.shape[1])[None, :]
     
     closest_enemy_dx = enemy_dx[batch_idx, enemy_idx, agent_idx]
     closest_enemy_dy = enemy_dy[batch_idx, enemy_idx, agent_idx]
@@ -81,27 +65,27 @@ def _act(
     y_action += closest_enemy_dy * flee_mask * FLEE_WEIGHT
 
     # Calculate distances to allies
-    ally_dx = x[:, None, :] - x[:, :, None]
-    ally_dy = y[:, None, :] - y[:, :, None]
+    ally_dx = ally_x[:, None, :] - ally_x[:, :, None]
+    ally_dy = ally_y[:, None, :] - ally_y[:, :, None]
     ally_dist = jnp.sqrt(ally_dx**2 + ally_dy**2)
 
     # Cohesion behavior - stay close to allies
     # Find average position of nearby allies
     nearby_mask = (ally_dist < COHESION_RADIUS) & (ally_dist > 0)  # Exclude self
-    x_total = jnp.sum(x[:, None, :] * nearby_mask, axis=1)
-    y_total = jnp.sum(y[:, None, :] * nearby_mask, axis=1)
+    x_total = jnp.sum(ally_x[:, None, :] * nearby_mask, axis=1)
+    y_total = jnp.sum(ally_y[:, None, :] * nearby_mask, axis=1)
     nearby_count = jnp.sum(nearby_mask, axis=1)
     
-    x_avg = jnp.where(nearby_count > 0, x_total / nearby_count, x)
-    y_avg = jnp.where(nearby_count > 0, y_total / nearby_count, y)
+    x_avg = jnp.where(nearby_count > 0, x_total / nearby_count, ally_x)
+    y_avg = jnp.where(nearby_count > 0, y_total / nearby_count, ally_y)
     
     # Move towards average position of nearby allies
-    x_action += (x_avg - x) * COHESION_WEIGHT
-    y_action += (y_avg - y) * COHESION_WEIGHT
+    x_action += (x_avg - ally_x) * COHESION_WEIGHT
+    y_action += (y_avg - ally_y) * COHESION_WEIGHT
 
     # Add some random movement
     xkey, ykey, _ = jax.random.split(key, 3)
-    x_action += jax.random.uniform(xkey, x.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
-    y_action += jax.random.uniform(ykey, y.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
+    x_action += jax.random.uniform(xkey, ally_x.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
+    y_action += jax.random.uniform(ykey, ally_y.shape, minval=-RANDOM_WEIGHT, maxval=RANDOM_WEIGHT)
 
     return x_action, y_action

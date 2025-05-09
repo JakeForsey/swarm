@@ -1,15 +1,25 @@
 import jax
 import jax.numpy as jnp
 
-from swarm.env import State
-
-
 # Movement parameters
 CENTER_WEIGHT = 0.1  # Strong weight for moving to center
 DAMPING = 0.15      # Strong damping for stability
 
-
-def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, jnp.ndarray]:
+@jax.jit
+def act(
+    t: jnp.ndarray,
+    key: jnp.ndarray,
+    ally_x: jnp.ndarray,
+    ally_y: jnp.ndarray,
+    ally_vx: jnp.ndarray,
+    ally_vy: jnp.ndarray,
+    ally_health: jnp.ndarray,
+    enemy_y: jnp.ndarray,
+    enemy_x: jnp.ndarray,
+    enemy_vx: jnp.ndarray,
+    enemy_vy: jnp.ndarray,
+    enemy_health: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     """Center swarm agent that moves all agents to their center of gravity.
     
     Strategy:
@@ -27,38 +37,17 @@ def act(state: State, team: int, key: jax.random.PRNGKey) -> tuple[jnp.ndarray, 
     Returns:
         Tuple of x and y actions for each agent
     """
-    if team == 1:
-        x = state.x1
-        y = state.y1
-        vx = state.vx1
-        vy = state.vy1
-    elif team == 2:
-        x = state.x2
-        y = state.y2
-        vx = state.vx2
-        vy = state.vy2
-    else:
-        raise ValueError(f"Invalid team: {team}")
-    
-    return _act(x, y, vx, vy)
-
-
-@jax.jit
-def _act(
-    x: jnp.ndarray, y: jnp.ndarray,
-    vx: jnp.ndarray, vy: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
     # Initialize actions
-    x_action = jnp.zeros_like(x)
-    y_action = jnp.zeros_like(y)
+    x_action = jnp.zeros_like(ally_x)
+    y_action = jnp.zeros_like(ally_y)
     
     # Calculate center of gravity
-    center_x = jnp.mean(x, axis=1, keepdims=True)
-    center_y = jnp.mean(y, axis=1, keepdims=True)
+    center_x = jnp.mean(ally_x, axis=1, keepdims=True)
+    center_y = jnp.mean(ally_y, axis=1, keepdims=True)
     
     # Calculate relative positions to center
-    dx = center_x - x
-    dy = center_y - y
+    dx = center_x - ally_x
+    dy = center_y - ally_y
     
     # Handle wrapping by finding shortest path to center
     dx = jnp.where(dx > 0.5, dx - 1.0, dx)
@@ -71,7 +60,7 @@ def _act(
     y_action += dy * CENTER_WEIGHT
     
     # Add velocity damping
-    x_action -= vx * DAMPING
-    y_action -= vy * DAMPING
+    x_action -= ally_vx * DAMPING
+    y_action -= ally_vy * DAMPING
     
     return x_action, y_action 
