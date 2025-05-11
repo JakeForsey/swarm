@@ -1,5 +1,8 @@
-jax>=0.4.13
-jaxlib>=0.4.13
-numpy>=1.24.0
-matplotlib>=3.7.0
+jax[cuda]
+jaxlib
+numpy
+matplotlib
 requests
+trl
+datasets
+peft
