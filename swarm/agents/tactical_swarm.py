@@ -18,39 +18,20 @@ PERCEPTION_RADIUS = 0.2  # Smaller perception radius
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Tactical swarm agent that maintains ultra-tight formations for focused combat.
-    
-    Strategy:
-    1. Forms extremely tight clusters (radius 0.12) for maximum coordination
-    2. Uses strong velocity matching (0.1) and damping (0.15) for precise movement
-    3. Engages in combat when:
-       - Enemy within short chase radius (0.25)
-       - Group size advantage (2+ agents)
-       - Health above threshold (0.3)
-    4. Maintains small perception radius (0.2) for local awareness
-    5. No random movement for maximum predictability
-    
-    Parameters:
-        state: Current game state containing positions, velocities, and health
-        team: Team identifier (1 or 2)
-        key: Random key for any stochastic operations
-    
-    Returns:
-        Tuple of x and y actions for each agent
-    """
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+):
+    """Tactical swarm agent that maintains ultra-tight formations for focused combat."""
     # Initialize actions
     x_action = jnp.zeros_like(ally_x)
     y_action = jnp.zeros_like(ally_y)

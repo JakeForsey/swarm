@@ -13,37 +13,20 @@ CHASE_WEIGHT = 0.06  # Weight for chasing enemies
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Train swarm agent that forms a line from first alive agent to nearest enemy.
-    
-    Strategy:
-    1. Find first alive agent and nearest enemy
-    2. Calculate vector from first agent to nearest enemy
-    3. Position each agent along this vector at proportional distances
-    4. Use formation weight (0.1) to maintain line formation
-    5. Match velocities (0.08) for smooth movement
-    6. Chase enemies within radius (0.25) with weight (0.06)
-    
-    Parameters:
-        state: Current game state containing positions, velocities, and health
-        team: Team identifier (1 or 2)
-        key: Random key for any stochastic operations
-    
-    Returns:
-        Tuple of x and y actions for each agent
-    """
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+):
+    """Train swarm agent that forms a line from first alive agent to nearest enemy."""
     batch_size = ally_x.shape[0]
     num_agents = ally_x.shape[1]
 

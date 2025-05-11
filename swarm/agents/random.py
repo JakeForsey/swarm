@@ -1,24 +1,23 @@
 import jax
-import jax.numpy as jnp
 
 MIN_ACTION = -0.005
 MAX_ACTION = 0.005
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+):
     """Random agent that moves in completely random directions."""
     xkey, ykey, _ = jax.random.split(key, 3)
     batch_size, num_agents = ally_x.shape

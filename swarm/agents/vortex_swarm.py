@@ -19,39 +19,20 @@ PERCEPTION_RADIUS = 0.3  # Added perception radius for group size calculation
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Vortex swarm agent that rotates around a center point while maintaining formation.
-    
-    Strategy:
-    1. Forms rotating formation around center (radius 0.15)
-    2. Rotates at constant speed (0.2 radians per step)
-    3. Uses velocity matching (0.08) for smooth rotation
-    4. Engages in combat when:
-       - Enemy within chase radius (0.25)
-       - Group size advantage (2+ agents)
-       - Health above threshold (0.3)
-    5. Implements moderate damping (0.1) for stability
-    
-    Parameters:
-        state: Current game state containing positions, velocities, and health
-        team: Team identifier (1 or 2)
-        key: Random key for any stochastic operations
-    
-    Returns:
-        Tuple of x and y actions for each agent
-    """
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+):
+    """Vortex swarm agent that rotates around a center point while maintaining formation."""
     # Initialize actions
     x_action = jnp.zeros_like(ally_x)
     y_action = jnp.zeros_like(ally_y)

@@ -29,20 +29,20 @@ WEIGHTS = jax.random.normal(
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-    weights: jnp.ndarray = WEIGHTS,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+    weights=WEIGHTS,
+):
     batch_size, num_allies = ally_x.shape
     
     dx = ally_x[:, :, None] - enemy_x[:, None, :]

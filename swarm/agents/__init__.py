@@ -11,5 +11,12 @@ def load_agents():
         for info in pkgutil.iter_modules(agents_module.__path__)
     ]
 
+def get_agent_names():
+    agents_module = import_module("swarm.agents")
+    return [
+        info.name
+        for info in pkgutil.iter_modules(agents_module.__path__)
+    ]
+
 def get_agent(name):
     return reload_module(f"swarm.agents.{name}")

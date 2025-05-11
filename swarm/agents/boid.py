@@ -9,36 +9,20 @@ COHESION_WEIGHT = 0.01
 
 @jax.jit
 def act(
-    t: jnp.ndarray,
-    key: jnp.ndarray,
-    ally_x: jnp.ndarray,
-    ally_y: jnp.ndarray,
-    ally_vx: jnp.ndarray,
-    ally_vy: jnp.ndarray,
-    ally_health: jnp.ndarray,
-    enemy_y: jnp.ndarray,
-    enemy_x: jnp.ndarray,
-    enemy_vx: jnp.ndarray,
-    enemy_vy: jnp.ndarray,
-    enemy_health: jnp.ndarray,
-) -> tuple[jnp.ndarray, jnp.ndarray]:
-    """Basic boid agent that implements core flocking behavior.
-    
-    Strategy:
-    1. Maintains moderate separation (radius 0.15) from other boids
-    2. Uses balanced alignment (0.05) and cohesion (0.05) weights
-    3. Implements moderate damping (0.1) for stability
-    4. No combat or enemy awareness
-    5. Pure flocking behavior for coordinated movement
-    
-    Parameters:
-        state: Current game state containing positions, velocities, and health
-        team: Team identifier (1 or 2)
-        key: Random key for any stochastic operations
-    
-    Returns:
-        Tuple of x and y actions for each agent
-    """
+    t,
+    key,
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
+):
+    """Basic boid agent that implements core flocking behavior."""
     dx = ally_x[:, None, :] - ally_x[:, :, None]
     dy = ally_y[:, None, :] - ally_y[:, :, None]
     norm = jnp.sqrt(dx ** 2 + dy ** 2)

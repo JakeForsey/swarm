@@ -14,3 +14,7 @@ results/
 animations/
 log.jsonl
 venv
+trainer_output/
+grpo/
+sft/
+swarm/agents/vibe.py
