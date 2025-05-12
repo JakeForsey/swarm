@@ -1,4 +1,4 @@
-jax[cuda]
+jax[cpu]
 jaxlib
 numpy
 matplotlib
@@ -6,3 +6,4 @@ requests
 trl
 datasets
 peft
+bitsandbytes
