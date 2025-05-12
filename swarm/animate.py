@@ -7,7 +7,7 @@ from matplotlib.animation import FuncAnimation
 
 from swarm.agents import get_agent
 from swarm.env import SwarmEnv
-from swarm.batch import compute_agent_schedules, batch_act
+from swarm.batch import compute_rectangle_schedules, batch_act
 
 def create_animation(states, agent1_name, agent2_name, filename):
     """Create and save an animation of the battle."""
@@ -97,8 +97,8 @@ def create_animation(states, agent1_name, agent2_name, filename):
 def run_match(env: SwarmEnv, agent1, agent2, num_agents: int = 32):
     """Run a single match between two agents and return the states."""
     # Compute agent schedules
-    agent_schedules1 = compute_agent_schedules(num_agents, 1, 1)
-    agent_schedules2 = compute_agent_schedules(num_agents, 1, 2)
+    agent_schedules1 = compute_rectangle_schedules(1, 1, 1, 1)
+    agent_schedules2 = compute_rectangle_schedules(1, 1, 1, 2)
     
     # Reset environment
     state = env.reset()
