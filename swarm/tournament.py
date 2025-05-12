@@ -5,19 +5,35 @@ import jax.numpy as jnp
 
 from swarm.agents import load_agents
 from swarm.env import SwarmEnv
-from swarm.batch import batch_act, compute_agent_schedules
+from swarm.batch import batch_act, compute_square_schedules, compute_rectangle_schedules
 
-def run(num_rounds_per_matchup: int = 256, episode_length: int = 128):
-    print("[init] Loading agents...")
-    agents = load_agents()
-    return _run(agents, num_rounds_per_matchup, episode_length)
+def run(
+        agents: list[Callable] = None,
+        opponents: list[Callable] = None,
+        num_rounds_per_matchup: int = 256,
+        episode_length: int = 128
+    ):
+    if agents is None:
+        assert opponents is None
+        print("[init] Loading agents...")
+        agents = load_agents()
+        print("[init] Computing agent schedules...")
+        agent_schedules1 = compute_square_schedules(len(agents), num_rounds_per_matchup, 1)
+        agent_schedules2 = compute_square_schedules(len(agents), num_rounds_per_matchup, 2)
+    else:
+        assert opponents is not None
+        print("[init] Computing agent schedules...")
+        agent_schedules1 = compute_rectangle_schedules(len(agents), len(opponents), num_rounds_per_matchup, 1)
+        agent_schedules2 = compute_rectangle_schedules(len(agents), len(opponents), num_rounds_per_matchup, 2)
+        agents = agents + opponents
+    return _run(agents, agent_schedules1, agent_schedules2, episode_length)
 
-def _run(agents: list[Callable], num_rounds_per_matchup: int = 256, episode_length: int = 128):
-    num_agents = len(agents)
-
-    print("[init] Computing agent schedules...")
-    agent_schedules1 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 1)
-    agent_schedules2 = compute_agent_schedules(num_agents, num_rounds_per_matchup, 2)
+def _run(
+        agents: list[Callable],
+        agent_schedules1: jnp.array, 
+        agent_schedules2: jnp.array,
+        episode_length: int = 128,
+    ):
     batch_size = agent_schedules1.shape[1]
 
     print("[init] Initializing environment...")

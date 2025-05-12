@@ -45,12 +45,15 @@ def main():
         jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
         jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
         jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
-        jax.config.update("jax_persistent_cache_enable_xla_caches", "xla_gpu_per_fusion_autotune_cache_dir")
+        # jax.config.update("jax_persistent_cache_enable_xla_caches", "xla_gpu_per_fusion_autotune_cache_dir")
 
     if args.command == "tournament":
         init_jax()
         from swarm import tournament
-        tournament.run(args.num_rounds_per_matchup, args.episode_length)
+        tournament.run(
+            num_rounds_per_matchup=args.num_rounds_per_matchup,
+            episode_length=args.episode_length,
+        )
     elif args.command == "animate":
         init_jax()
         from swarm import animate
@@ -60,6 +63,7 @@ def main():
         from swarm import vibe
         vibe.run(args.host, args.port)
     elif args.command == "vibe-rl":
+        init_jax()
         from swarm import vibe_rl
         vibe_rl.run()
 
