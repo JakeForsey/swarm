@@ -1,3 +1,5 @@
+from itertools import combinations
+
 import jax
 import jax.numpy as jnp
 from swarm.env import State
@@ -28,43 +30,19 @@ def place_actions(
     y_actions = y_actions.at[indices].set(agent_y)
     return x_actions, y_actions
 
-
-def compute_agent_schedules(
+def compute_rectangle_schedules(
     num_agents: int,
+    num_opponents: int,
     rounds_per_matchup: int,
     team: int,
 ) -> jnp.ndarray:
-    """Compute the schedule of which agents are active in each round.
-    
-    Args:
-        num_agents: Total number of agents
-        rounds_per_matchup: Number of rounds for each agent matchup
-        team: Team identifier (1 or 2)
-        
-    Returns:
-        Boolean array of shape (num_agents, total_rounds) indicating which agents
-        are active in each round
-    """
     matchups = []
-
-    # pop_size = 64
-    # baseline_size = 5
-    # pop = list(range(pop_size))
-    # baseline = list(range(pop_size, pop_size + baseline_size))
-    # matchups = []
-    # for i in pop:
-    #     for j in baseline:
-    #         matchups.append((i, j))
-    #         matchups.append((j, i))
-
     for i in range(num_agents):
-        for j in range(i + 1, num_agents):
+        for j in list(range(num_agents, num_agents + num_opponents)):
             matchups.append((i, j))
             matchups.append((j, i))
-
-    # matchups = list(combinations(range(num_agents), 2))
     
-    schedule = jnp.zeros((num_agents, len(matchups)), dtype=bool)
+    schedule = jnp.zeros((num_agents + num_opponents, len(matchups)), dtype=bool)
     for ii, (i, j) in enumerate(matchups):
         if team == 1:
             schedule = schedule.at[j, ii].set(True)
@@ -73,6 +51,20 @@ def compute_agent_schedules(
     schedule = jnp.repeat(schedule, rounds_per_matchup, axis=1)
     return schedule
 
+def compute_square_schedules(
+    num_agents: int,
+    rounds_per_matchup: int,
+    team: int,
+) -> jnp.ndarray:
+    matchups = list(combinations(range(num_agents), 2))    
+    schedule = jnp.zeros((num_agents, len(matchups)), dtype=bool)
+    for ii, (i, j) in enumerate(matchups):
+        if team == 1:
+            schedule = schedule.at[j, ii].set(True)
+        else:
+            schedule = schedule.at[i, ii].set(True)
+    schedule = jnp.repeat(schedule, rounds_per_matchup, axis=1)
+    return schedule
 
 def batch_act(
     state: State,
