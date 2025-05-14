@@ -1,9 +1,12 @@
 jax[cpu]
 jaxlib
 numpy
-matplotlib
 requests
 trl
 datasets
 peft
 bitsandbytes
+accelerate
+tensorboard
+vl-convert-python
+altair
