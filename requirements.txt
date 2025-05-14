@@ -10,3 +10,5 @@ accelerate
 tensorboard
 vl-convert-python
 altair
+vegafusion
+matplotlib
