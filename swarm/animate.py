@@ -121,17 +121,13 @@ def run_match(env: SwarmEnv, agent1, agent2, num_agents: int = 32):
     return states, reward
 
 def run(agent1_name: str, agent2_name: str, episode_length: int = 128):
-    print("[init] Creating animation...")
     os.makedirs("results/animations", exist_ok=True)
 
-    print(f"[init] Loading agents ({agent1_name} and {agent2_name})...")
     agent1 = get_agent(agent1_name)
     agent2 = get_agent(agent2_name)
     
     env = SwarmEnv(batch_size=1, episode_length=episode_length)
-    print(f"[run] Running match ({agent1_name} vs {agent2_name})...")
     states, _ = run_match(env, agent1, agent2)
 
     filename = f"{agent1_name}_vs_{agent2_name}"
-    print(f"[animate] Creating animation...")
     create_animation(states, agent1_name, agent2_name, filename)

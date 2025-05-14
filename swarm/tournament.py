@@ -15,14 +15,11 @@ def run(
     ):
     if agents is None:
         assert opponents is None
-        print("[init] Loading agents...")
         agents = load_agents()
-        print("[init] Computing agent schedules...")
         agent_schedules1 = compute_square_schedules(len(agents), num_rounds_per_matchup, 1)
         agent_schedules2 = compute_square_schedules(len(agents), num_rounds_per_matchup, 2)
     else:
         assert opponents is not None
-        print("[init] Computing agent schedules...")
         agent_schedules1 = compute_rectangle_schedules(len(agents), len(opponents), num_rounds_per_matchup, 1)
         agent_schedules2 = compute_rectangle_schedules(len(agents), len(opponents), num_rounds_per_matchup, 2)
         agents = agents + opponents
@@ -36,22 +33,17 @@ def _run(
     ):
     batch_size = agent_schedules1.shape[1]
 
-    print("[init] Initializing environment...")
     env = SwarmEnv(batch_size=batch_size, episode_length=episode_length)
 
-    print("[init] Jitting environment, agents and running warmup step...")
     state = env.reset()
     x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, jax.random.PRNGKey(0))
     x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, jax.random.PRNGKey(0))
     state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
     state = env.reset()
 
-    print("[tournament] Starting tournament...")
-    start = time.perf_counter()
     keys1 = jax.random.split(jax.random.PRNGKey(0), env.episode_length)
     keys2 = jax.random.split(jax.random.PRNGKey(1), env.episode_length)
     for step, key1, key2 in zip(range(1, env.episode_length + 1), keys1, keys2):
-        print(f"[tournament] Step {step}/{env.episode_length}")
         x_action1, y_action1 = batch_act(state, agents, agent_schedules1, 1, key1)
         x_action2, y_action2 = batch_act(state, agents, agent_schedules2, 2, key2)
         state, reward = env.step(state, x_action1, y_action1, x_action2, y_action2)
@@ -70,15 +62,5 @@ def _run(
                         "reward": rewards.mean(),
                     }
                 )
-
-            for summary in sorted(reward_summary, key=lambda x: x["reward"], reverse=True):
-                print(f"{summary['name']:>20} reward: {summary['reward']:.2f}")
-    
-    end = time.perf_counter()
-    tournament_duration = end - start
-    
-    print(f"[tournament] Tournament complete...")
-    print(f"[tournament] Time taken: {tournament_duration:.2f} seconds")
-    print(f"[tournament] Steps per second: {(env.episode_length * env.batch_size) / tournament_duration:,.0f}")
-
+        
     return reward_summary

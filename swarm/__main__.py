@@ -36,7 +36,7 @@ def main():
     vibe_parser.add_argument("--host", default="cortex2")
     vibe_parser.add_argument("--port", default=8080)
 
-    vibe_rl_parser = subparsers.add_parser("vibe-rl", help="Vibe RL")
+    rl_parser = subparsers.add_parser("rl", help="RL")
 
     args = parser.parse_args()
 
@@ -50,22 +50,20 @@ def main():
     if args.command == "tournament":
         init_jax()
         from swarm import tournament
-        tournament.run(
+        results = tournament.run(
             num_rounds_per_matchup=args.num_rounds_per_matchup,
             episode_length=args.episode_length,
         )
+        for result in sorted(results, key=lambda x: x["reward"], reverse=True):
+            print(f"{result['name']:>20} reward: {result['reward']:.2f}")
     elif args.command == "animate":
         init_jax()
         from swarm import animate
         animate.run(args.agent1, args.agent2, args.episode_length)
-    elif args.command == "vibe":
+    elif args.command == "rl":
         init_jax()
-        from swarm import vibe
-        vibe.run(args.host, args.port)
-    elif args.command == "vibe-rl":
-        init_jax()
-        from swarm import vibe_rl
-        vibe_rl.run()
+        from swarm import rl
+        rl.run()
 
 if __name__ == "__main__":
     main()

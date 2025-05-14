@@ -1,14 +1,12 @@
 from collections import deque
-import hashlib
 import json
 import os
 import uuid
 import types
-import math
 
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOTrainer, GRPOConfig
 
 import jax
@@ -30,7 +28,6 @@ PROMPT = f"""\
 Please develop a competitive agent in python (using jax) that competes in a two player environment.
 
 The Rules:
- * The 2D (1.0 x 1.0) map wraps around at the edges
  * Each player gets 32 pieces they control
  * If pieces from opposing teams collide they both take damage
  * Pieces regenerate some health each step
@@ -43,21 +40,21 @@ import jax.numpy as jnp
 
 @jax.jit
 def act(
-    # Time step [batch_size] 
-    t: jnp.array,
+    # Time step jnp.ndarray[batch_size] 
+    t,
     # Jax random key
-    key: jnp.array, 
-    # Positions, velocities and health [batch_size, num_agents]
-    ally_x: jnp.array,
-    ally_y: jnp.array,
-    ally_vx: jnp.array,
-    ally_vy: jnp.array,
-    ally_health: jnp.array,
-    enemy_y: jnp.array,
-    enemy_x: jnp.array,
-    enemy_vx: jnp.array,
-    enemy_vy: jnp.array,
-    enemy_health: jnp.array,
+    key, 
+    # Positions, velocities and health jnp.ndarray[batch_size, num_agents]
+    ally_x,
+    ally_y,
+    ally_vx,
+    ally_vy,
+    ally_health,
+    enemy_y,
+    enemy_x,
+    enemy_vx,
+    enemy_vy,
+    enemy_health,
 ):
     batch_size, num_agents = ally_x.shape
     # TODO: Implement a strategy here instead of zeros
@@ -140,7 +137,7 @@ def _create_compute_graph(completion):
         'enemy_health',
     ]
     
-    batch = 8
+    batch = 2
     num_agents = 32
     shape = (batch, num_agents)
 
@@ -173,7 +170,6 @@ def _create_compute_graph(completion):
             enemy_health,
         ).jaxpr
     except Exception as e:
-        print(e)
         return None
     
     # Build graph
@@ -241,96 +237,42 @@ def _create_compute_graph(completion):
 
 # ---------------------------------- Rewards ----------------------------------
 
-def reward_prefix_length(completion):
-    """Prefix should be 0 characters."""
-    blocks = _parse_blocks(completion)
-    if blocks is None:
-        return -1.0
-    prefix, src, suffix = blocks
-    prefix_length = len(prefix)
-    return -math.log(prefix_length) / 10 if prefix_length else 0
-
-def reward_suffix_length(completion):
-    """Suffix should be 0 characters."""
-    blocks = _parse_blocks(completion)
-    if blocks is None:
-        return -1.0
-    prefix, src, suffix = blocks
-    suffix_length = len(suffix)
-    return -math.log(suffix_length) / 10 if suffix_length else 0
-
-def reward_formatting(completion):
+def reward_formatting(completion, *args, **kwargs):
     """Completion should be formatted."""
     blocks = _parse_blocks(completion)
     return -1.0 if blocks is None else 1.0
 
-def reward_valid_module(completion):
-    """The completion should contain a valid python module."""
-    agent_module = _load_agent(completion)
-    return -1.0 if agent_module is None else 1.0
-
-def reward_has_act_function(completion):
-    """The completion should contain a valid `act` function."""
-    act = _load_act(completion)
-    return -1.0 if act is None else 1.0
-
-def reward_no_for_loops(completion):
-    """Shouldnt use for loops."""
-    return -(completion.count("for ") * 0.1)
-
-def reward_no_if_statements(completion):
-    """Shouldnt use if statements."""
-    return -(completion.count("if ") * 0.1)
-
-def reward_no_doc_string(completion):
-    """Shouldnt write doc strings."""
-    doc_string_count = completion.count('"""') // 2
-    return -(doc_string_count * 0.1)
-
-def reward_no_import_numpy(completion):
-    """Shouldnt import numpy."""
-    return -(completion.count('import numpy') * 0.1)
-
-def reward_no_import_jaxtyping(completion):
-    """Shouldnt import jaxtyping"""
-    return -(completion.count('jaxtyping') * 0.1)
-
-def reward_no_print(completion):
-    """Shouldnt print anything."""
-    return -(completion.count('print(') * 0.1)
-
-def reward_computation_graph(completion):
+def reward_computation_graph(completion, *args, **kwargs):
+    """Completions should connect inputs to outputs."""
+    reward = -1.0
     G = _create_compute_graph(completion)
-    if G is None:
-        return -1.0
-    reward = 0
-    input_params = [
-        "ally_x",
-        "ally_y",
-        "ally_vx",
-        "ally_vy",
-        "ally_health",
-        "enemy_y",
-        "enemy_x",
-        "enemy_vx",
-        "enemy_vy",
-        "enemy_health",
-    ]
-    for sources, dest in [
-        (input_params, "dvx"),
-        (input_params, "dvy"),
-    ]:
-        for source in sources:
-            if source not in G.nodes:
-                continue
-            if dest not in G.nodes:
-                continue
-            if nx.has_path(G, source, dest):
-                print(source, dest)
-                reward += 0.03
+    if G is not None:
+        input_params = [
+            "ally_x",
+            "ally_y",
+            "ally_vx",
+            "ally_vy",
+            "ally_health",
+            "enemy_y",
+            "enemy_x",
+            "enemy_vx",
+            "enemy_vy",
+            "enemy_health",
+        ]
+        outputs = ["dvx", "dvy"]
+        possible_paths = len(input_params) * len(outputs)
+        path_value = (1 / possible_paths) * 2
+        for input_param in input_params:
+            for output in outputs:
+                if input_param not in G.nodes:
+                    continue
+                if output not in G.nodes:
+                    continue
+                if nx.has_path(G, input_param, output):
+                    reward += path_value
     return reward
 
-def reward_fn(completion):
+def reward_tournament(completion, run_id=None, step=None, index=None):
     """Performance against opponents."""
     try:
         agent = _load_agent(completion)
@@ -340,104 +282,55 @@ def reward_fn(completion):
             num_rounds_per_matchup=32,
             episode_length=128,
         )
+        matches = [
+            result for result in results
+            if result["name"] == "tmp_agent"
+        ]
+        reward =float(matches[0]["reward"])
     except Exception as e:
-        return -1.0
+        reward = -1.0
 
-    matches = [result for result in results if result["name"] == "tmp_agent"]
-    reward = float(matches[0]["reward"])
+    if run_id is not None:
+        # Persist completions and reward (maybe SFT later?)
+        # N.B. This doesnt seem like the right place to do this, but I can't
+        # find a TrainerCallback that has this context.
+        sample_directory = f"results/logdir/{run_id}/completions/{step}/{index}"
+        os.makedirs(sample_directory, exist_ok=True)
+        with open(f"{sample_directory}/completion.txt", "w") as f:
+            f.write(completion)
+        with open(f"results/logdir/rewards.jsonl", "a") as f:
+            data = {
+                "reward": reward,
+                "run_id": run_id,
+                "step": step,
+                "index": index,
+            }
+            f.write(json.dumps(data) + "\n")
+    
     return reward
 
-AUX_REWARD_FNS = [
-    reward_prefix_length,
-    reward_suffix_length,
-    reward_formatting,
-    reward_valid_module,
-    reward_has_act_function,
-    reward_no_for_loops,
-    reward_no_if_statements,
-    reward_no_doc_string,
-    reward_no_import_numpy,
-    reward_no_import_jaxtyping,
-    reward_no_print,
-    reward_computation_graph,
-]
-
-# with open("results/src/3294e8e9/7/-0.887499988079071/d7a7a0be6c284f9cadc19aa26e5c3dbcce9e84dd6e812bee470c731639563d15/src.py", "r") as f:
-#     data= f.read()
-# completion = f"""
-# ```python
-# {data}
-# ```"""
-
-# print(reward_computation_graph(completion))
-# exit(1)
-
-class RewardFunc:
-    __name__ = "SwarmReward"
-
-    def __init__(self, run_id):
-        self.run_id = run_id
-        self.step = 0
-
-    def __call__(self, completions, *args, **kwargs):
-        rewards = []
-        for completion in completions:
-            aux_rewards = {}
-            for aux_reward_fn in AUX_REWARD_FNS:
-                aux_reward = aux_reward_fn(completion)
-                print(aux_reward_fn.__name__, aux_reward)
-                if aux_reward is not None:
-                    aux_rewards[aux_reward_fn.__name__] = aux_reward
-            
-            reward = reward_fn(completion)
-            shaped = reward + (sum(aux_rewards.values()) / 10)
-            
-            data = {
-                **aux_rewards,
-                "reward": reward,
-                "reward_shaped": shaped,
-                "step": self.step,
-                "run_id": self.run_id,
-            }
-            
-            completion_hash = hashlib.sha256(completion.encode()).hexdigest()
-            directory = f"results/src/{self.run_id}/{self.step}/{reward}/{completion_hash}"
-            
-            os.makedirs(directory, exist_ok=True)
-            with open(f"{directory}/completion.txt", "w") as f:
-                f.write(completion)
-            with open(f"{directory}/data.json", "w") as f:
-                json.dump(data, f)
-            src = _parse_src(completion)
-            if src is not None:
-                with open(f"{directory}/src.py", "w") as f:
-                    f.write(src)
-
-            print(shaped, reward)
-            
-            rewards.append(shaped)
-            with open("grpo2.jsonl", "a") as f:
-                f.write(json.dumps(data) + "\n")
-            
-        self.step += 1
-        return rewards
+def make_reward_fn(func, run_id):
+    step = 0
+    def batched_reward(prompts, completions, *kwargs):
+        nonlocal step
+        step += 1
+        return [
+            func(completion, run_id, step, index)
+            for index, completion in enumerate(completions)
+        ]
+    batched_reward.__name__ = func.__name__
+    return batched_reward
 
 def run():
     run_id = str(uuid.uuid1()).split("-")[0]
-    print(run_id)
+    print(f"{run_id=}")
 
     # --------------------------------- Model ---------------------------------
     model_name = "Qwen/Qwen3-0.6B"
-    # model_name = "Qwen/Qwen3-4B"
-    prompt_template = QWEN_PROMPT_TEMPLATE
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        # 4bit not available on 1080 Ti (maybe?)
-        # quantization_config=BitsAndBytesConfig(load_in_4bit=True)
-    )
-
-    # --------------------------------- Lora -----------------------------------
-    lora_rank = 16
+    model = AutoModelForCausalLM.from_pretrained(model_name).eval()
+    
+    # --------------------------------- Lora ----------------------------------
+    lora_rank = 32
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         r=lora_rank,
@@ -449,38 +342,59 @@ def run():
         lora_dropout=0,
         bias="none",
         use_rslora=True,
-        # loftq_config=None,
     )
     model = get_peft_model(model, peft_config)
+    model.print_trainable_parameters()
 
     # ------------------------------- Tokenizer -------------------------------
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    max_seq_length = 1024
-    prompt = prompt_template.format(prompt=PROMPT)
-    prompt_length = len(tokenizer(prompt)["input_ids"])
+    tokenizer.pad_token = tokenizer.eos_token
 
-    # ------------------------------- Dataset ---------------------------------
-    dataset = Dataset.from_list([{"prompt": prompt}])
-
+    # -------------------------------- Rewards --------------------------------
+    weighted_reward_fns = [
+        (make_reward_fn(reward_tournament, run_id), 1.0),
+        (make_reward_fn(reward_computation_graph, run_id), 0.4),
+        (make_reward_fn(reward_formatting, run_id), 0.4),
+    ]
+    reward_weights = [weight for reward_fn, weight in weighted_reward_fns]
+    reward_funcs = [reward_fn for reward_fn, weight in weighted_reward_fns]
+    
     # --------------------------------- GRPO ----------------------------------
-    trainer_args = GRPOConfig(
-        learning_rate=1e-4,
+    max_seq_length = 1024
+    grpo_prompt = QWEN_PROMPT_TEMPLATE.format(prompt=PROMPT)
+    grpo_prompt_length = len(tokenizer(grpo_prompt)["input_ids"])
+    grpo_args = GRPOConfig(
+        # Disable reference model (save memory)
+        beta=0.0,
+        # Learning rate
+        lr_scheduler_type="cosine",
+        learning_rate = 1e-6,
+        warmup_ratio=0.1,
+        # Optimizer
+        optim="paged_adamw_8bit",
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.1,
-        lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
-        logging_steps=1,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=16,
-        num_generations=16,
-        max_prompt_length=prompt_length,
-        max_completion_length=max_seq_length - prompt_length,
-        num_train_epochs=1024,
         max_grad_norm=0.1,
-        report_to="none",
-        output_dir=f"grpo/{run_id}",
+        # Batch size
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=24,
+        num_generations=24,
+        # Sequence length
+        max_prompt_length=grpo_prompt_length,
+        max_completion_length=max_seq_length - grpo_prompt_length,
+        num_train_epochs=256,
+        reward_weights=reward_weights,
+        # Logging
+        logging_dir=f"results/logdir/{run_id}",
+        logging_strategy="epoch",
+        logging_steps=1,
+        report_to="tensorboard",
+        # Checkpointing
+        output_dir=f"results/checkpoints/grpo/{run_id}",
+        save_strategy="epoch",
+        save_steps=8,
+        # Generation sampling
         # https://huggingface.co/Qwen/Qwen3-0.6B#best-practices
         # Non-thinking: Temperature=0.7, TopP=0.8, TopK=20, and MinP=0
         temperature=0.7,
@@ -488,11 +402,11 @@ def run():
         top_k=20,
         min_p=0,
     )
-    trainer = GRPOTrainer(
-        args=trainer_args,
+    grpo_trainer = GRPOTrainer(
+        args=grpo_args,
         model=model,
         processing_class=tokenizer,
-        reward_funcs=RewardFunc(run_id),
-        train_dataset=dataset,
+        reward_funcs=reward_funcs,
+        train_dataset=Dataset.from_list([{"prompt": grpo_prompt}]),
     )
-    trainer.train()
+    grpo_trainer.train()
