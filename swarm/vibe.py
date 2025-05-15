@@ -34,7 +34,7 @@ REQUEST_BODY = {
     "dry_allowed_length": 2,
     "dry_penalty_last_n": -1,
     "max_tokens": -1,
-    "timings_per_token":False
+    "timings_per_token": False,
 }
 
 _worker_host = None
@@ -58,7 +58,7 @@ def one_vibe(run_id, index):
 
     choices = data["choices"]
     choice = choices[0]
-    completion = choice["content"]
+    completion = choice["message"]["content"]
 
     reward_tournament(
         completion,
@@ -75,12 +75,14 @@ def one_vibe(run_id, index):
 def run():
     run_id = str(uuid.uuid1()).split("-")[0]
     print(f"{run_id=}")
+
     ctx = get_context("spawn")
     with ctx.Pool(
         processes=len(HOSTS),
         initializer=init_worker,
         initargs=(HOSTS[0],),  # This will be overridden below
     ) as pool:
+        
         for host in HOSTS:
             pool.apply_async(init_worker, args=(host,))
 
