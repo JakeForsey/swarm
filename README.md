@@ -1,21 +1,15 @@
-# Swarm Intelligence Simulation
+# Swarm
 
-A JAX-based simulation environment for studying swarm intelligence and multi-agent behavior. Agents compete in a 2D environment, demonstrating various strategies from simple boids to complex combat coordination. Agents have been implemented by the vibes (Cursor).
+A fast (GPU accelerated) two player swarm based environment with a large number of unique agents.
 
-## Environment
-- 2D continuous space with multiple agents on each team
-- Team-based combat with health and damage mechanics
+## Usage
 
-## Example matches
-
-| <img width="125px" height="0px"> | <img width="125px" height="0px"> | <img width="125px" height="0px"> |
-| --- | --- | --- |
-![](results/animations/health_swarm_vs_health_swarm.gif) | ![](results/animations/health_swarm_vs_vortex_swarm.gif) | ![](results/animations/health_swarm_vs_random.gif)
-![](results/animations/vortex_swarm_vs_health_swarm.gif) | ![](results/animations/vortex_swarm_vs_vortex_swarm.gif) | ![](results/animations/vortex_swarm_vs_random.gif)
-![](results/animations/random_vs_health_swarm.gif) | ![](results/animations/random_vs_vortex_swarm.gif) | ![](results/animations/random_vs_random.gif)
-
-## Average Agent Rewards
+### 1. Run a Round Robin Tournament
+```bash
+python  -m swarm tournament
 ```
+
+```bash
         health_swarm reward: 0.80
       predator_swarm reward: 0.66
         hunter_swarm reward: 0.61
@@ -41,25 +35,29 @@ A JAX-based simulation environment for studying swarm intelligence and multi-age
               chaser reward: -0.66
               random reward: -0.92
 ```
-
-
-## Usage
-
-1. **Run a Round Robin Tournament**
+### 2. Animate a game between two agents
 ```bash
-python -O -m swarm tournament
+python -m swarm animate <agent1> <agent2>
 ```
 
-2. **Create Animation**
+<img src=results/animations/random_vs_predator_swarm.gif width="250px" height="250px">
+
+See more in [results/animations](results/animations)
+
+### 3. Automatically code agents
 ```bash
-python -O -m swarm animate <agent1> <agent2>
+python -m swarm vibe
 ```
 
-## Dependencies
-- JAX
-- NumPy
-- Matplotlib (for visualization)
+### 4. **Train an LLM to write agents with RL**
+```bash
+python -m swarm rl
+```
 
-## Development
-- New agent types can be added by implementing the `act(state, team, key) -> tuple[dvx, dvy]` interface
-- Evaluation runs matches against multiple opponent types
+## Example matches
+
+| <img width="125px" height="0px"> | <img width="125px" height="0px"> | <img width="125px" height="0px"> |
+| --- | --- | --- |
+![](results/animations/health_swarm_vs_health_swarm.gif) | ![](results/animations/health_swarm_vs_vortex_swarm.gif) | ![](results/animations/health_swarm_vs_random.gif)
+![](results/animations/vortex_swarm_vs_health_swarm.gif) | ![](results/animations/vortex_swarm_vs_vortex_swarm.gif) | ![](results/animations/vortex_swarm_vs_random.gif)
+![](results/animations/random_vs_health_swarm.gif) | ![](results/animations/random_vs_vortex_swarm.gif) | ![](results/animations/random_vs_random.gif)
