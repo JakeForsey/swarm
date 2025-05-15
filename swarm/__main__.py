@@ -33,8 +33,6 @@ def main():
     add_episode_length_argument(animate_parser)
 
     vibe_parser = subparsers.add_parser("vibe", help="Vibe")
-    vibe_parser.add_argument("--host", default="cortex2")
-    vibe_parser.add_argument("--port", default=8080)
 
     rl_parser = subparsers.add_parser("rl", help="RL")
 
@@ -64,6 +62,10 @@ def main():
         init_jax()
         from swarm import rl
         rl.run()
+    elif args.command == "vibe":
+        init_jax()
+        from swarm import vibe
+        vibe.run()
 
 if __name__ == "__main__":
     main()

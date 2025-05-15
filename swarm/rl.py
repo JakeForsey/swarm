@@ -272,7 +272,7 @@ def reward_computation_graph(completion, *args, **kwargs):
                     reward += path_value
     return reward
 
-def reward_tournament(completion, run_id=None, step=None, index=None):
+def reward_tournament(completion, run_id=None, step=None, index=None, metadata=None):
     """Performance against opponents."""
     try:
         agent = _load_agent(completion)
@@ -304,6 +304,7 @@ def reward_tournament(completion, run_id=None, step=None, index=None):
                 "run_id": run_id,
                 "step": step,
                 "index": index,
+                "metadata": metadata,
             }
             f.write(json.dumps(data) + "\n")
     
