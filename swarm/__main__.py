@@ -33,7 +33,7 @@ def main():
     add_episode_length_argument(animate_parser)
 
     vibe_parser = subparsers.add_parser("vibe", help="Vibe")
-
+    vibevolve_parser = subparsers.add_parser("vibevolve", help="Vibe")
     rl_parser = subparsers.add_parser("rl", help="RL")
 
     args = parser.parse_args()
@@ -66,6 +66,10 @@ def main():
         init_jax()
         from swarm import vibe
         vibe.run()
+    elif args.command == "vibevolve":
+        init_jax()
+        from swarm import vibevolve
+        vibevolve.run()
 
 if __name__ == "__main__":
     main()

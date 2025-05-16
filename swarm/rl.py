@@ -3,6 +3,7 @@ import json
 import os
 import uuid
 import types
+import time
 
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model
@@ -282,13 +283,20 @@ def reward_tournament(completion, run_id=None, step=None, index=None, metadata=N
             num_rounds_per_matchup=32,
             episode_length=128,
         )
-        matches = [
-            result for result in results
-            if result["name"] == "tmp_agent"
-        ]
-        reward =float(matches[0]["reward"])
+        for result in results:
+            result["reward"] = float(result["reward"])
     except Exception as e:
-        reward = -1.0
+        results = [
+            {"name": opp.__name__.split(".")[-1], "reward": 1.0}
+            for opp in OPPONENTS
+        ]
+        results.append({"name": "tmp_agent", "reward": -1.0})
+
+    matches = [
+        result for result in results
+        if result["name"] == "tmp_agent"
+    ]
+    reward = matches[0]["reward"]
 
     if run_id is not None:
         # Persist completions and reward (maybe SFT later?)
@@ -304,6 +312,8 @@ def reward_tournament(completion, run_id=None, step=None, index=None, metadata=N
                 "run_id": run_id,
                 "step": step,
                 "index": index,
+                "timestamp": time.time(),
+                "results": results,
                 "metadata": metadata,
             }
             f.write(json.dumps(data) + "\n")
