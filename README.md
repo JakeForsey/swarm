@@ -51,19 +51,9 @@ python -m swarm animate <agent1> <agent2>
 
 <img src=results/animations/random_vs_predator_swarm.gif width="300px" height="300px">
 
-### 3. Automatically code agents
-```bash
-python -m swarm vibe
-```
-
-### 4. **MAP Elites style prompt evolution**
+### 3. **MAP Elites style prompt evolution**
 ```bash
 python -m swarm vibevolve
-```
-
-### 5. **Train an LLM to write agents with GRPO**
-```bash
-python -m swarm rl
 ```
 
 ## Example matches

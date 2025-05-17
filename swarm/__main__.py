@@ -1,7 +1,7 @@
 import argparse
 
 DEFAULT_EPISODE_LENGTH = 128
-DEFAULT_NUM_ROUNDS_PER_MATCHUP = 256
+DEFAULT_NUM_ROUNDS_PER_MATCHUP = 32
 
 def add_episode_length_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
@@ -28,13 +28,19 @@ def main():
     add_episode_length_argument(tournament_parser)
 
     animate_parser = subparsers.add_parser("animate", help="Animate a tournament")
+    add_episode_length_argument(animate_parser)
     animate_parser.add_argument("agent1", type=str, default="random")
     animate_parser.add_argument("agent2", type=str, default="random")
-    add_episode_length_argument(animate_parser)
 
-    vibe_parser = subparsers.add_parser("vibe", help="Vibe")
-    vibevolve_parser = subparsers.add_parser("vibevolve", help="Vibe")
-    rl_parser = subparsers.add_parser("rl", help="RL")
+    vibevolve_parser = subparsers.add_parser("vibevolve", help="VibEvolve new agents")
+    add_num_rounds_per_matchup_argument(vibevolve_parser)
+    add_episode_length_argument(vibevolve_parser)
+    vibevolve_parser.add_argument(
+        "--hosts",
+        nargs='+',
+        default=["cortex1:8080", "cortex2:8080", "cortex2:8081"],
+        help="OpenAI compliant LLM server hosts",
+    )
 
     args = parser.parse_args()
 
@@ -57,19 +63,19 @@ def main():
     elif args.command == "animate":
         init_jax()
         from swarm import animate
-        animate.run(args.agent1, args.agent2, args.episode_length)
-    elif args.command == "rl":
-        init_jax()
-        from swarm import rl
-        rl.run()
-    elif args.command == "vibe":
-        init_jax()
-        from swarm import vibe
-        vibe.run()
+        animate.run(
+            agent1_name=args.agent1,
+            agent2_name=args.agent2,
+            episode_length=args.episode_length,
+        )
     elif args.command == "vibevolve":
         init_jax()
         from swarm import vibevolve
-        vibevolve.run()
+        vibevolve.run(
+            hosts=args.hosts,
+            num_rounds_per_matchup=args.num_rounds_per_matchup,
+            episode_length=args.episode_length,
+        )
 
 if __name__ == "__main__":
     main()
