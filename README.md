@@ -10,34 +10,38 @@ python  -m swarm tournament
 ```
 
 ```bash
-              simple reward: 0.80
-              center reward: 0.70
-        health_swarm reward: 0.63
-        hunter_swarm reward: 0.56
-        vibevolve_v1 reward: 0.48
-      predator_swarm reward: 0.44
-     vortex_swarm_v2 reward: 0.39
-       predator_boid reward: 0.28
-         param_swarm reward: 0.26
-        spiral_swarm reward: 0.17
-         squad_swarm reward: 0.17
-        vortex_swarm reward: 0.17
-        pincer_swarm reward: 0.15
-        center_swarm reward: 0.07
-      adaptive_swarm reward: -0.02
-      fortress_swarm reward: -0.07
+        vibevolve_v5 reward: 0.78
+        vibevolve_v4 reward: 0.77
+              simple reward: 0.73
+        vibevolve_v3 reward: 0.65
+              center reward: 0.57
+        health_swarm reward: 0.47
+        vibevolve_v2 reward: 0.44
+     vortex_swarm_v2 reward: 0.38
+        hunter_swarm reward: 0.37
+      predator_swarm reward: 0.35
+         param_swarm reward: 0.24
+        vibevolve_v1 reward: 0.18
+         squad_swarm reward: 0.15
+        vortex_swarm reward: 0.13
+       predator_boid reward: 0.10
+        pincer_swarm reward: 0.04
+        spiral_swarm reward: -0.03
+        center_swarm reward: -0.09
        concave_swarm reward: -0.11
-      tactical_swarm reward: -0.11
-                boid reward: -0.22
-         train_swarm reward: -0.30
-               pairs reward: -0.35
-          smart_boid reward: -0.35
-            clusters reward: -0.46
-          ring_swarm reward: -0.48
-        static_swarm reward: -0.54
+      tactical_swarm reward: -0.13
+      fortress_swarm reward: -0.18
+      adaptive_swarm reward: -0.19
+         train_swarm reward: -0.31
+                boid reward: -0.36
+               pairs reward: -0.42
+          smart_boid reward: -0.49
+          ring_swarm reward: -0.52
              fleeing reward: -0.56
-              chaser reward: -0.76
-              random reward: -0.93
+            clusters reward: -0.57
+        static_swarm reward: -0.71
+              chaser reward: -0.78
+              random reward: -0.91
 ```
 
 ### 2. Animate a game between two agents
