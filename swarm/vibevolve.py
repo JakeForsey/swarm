@@ -309,22 +309,22 @@ Attempt to improve the following agent:
 
 def one_vibe(run_id, num_rounds_per_matchup, episode_length, index):
     global _worker_host
-    worker_prefix = f"[{os.getpid()}] [{_worker_host}]"
+    worker_prefix = f"[{os.getpid()} {_worker_host}]"
 
     start_timestamp = time.time()
     completion_id = str(start_timestamp)
 
     print(f"{worker_prefix} Requesting model...")
     model = request_model(_worker_host)
-    print(f"[{worker_prefix}] {model=}")
+    print(f"{worker_prefix} {model=}")
 
-    print(f"[{worker_prefix}] Building prompt...")
+    print(f"{worker_prefix} Building prompt...")
     prompt, parent_completion_id = build_prompt(run_id)
 
-    print(f"[{worker_prefix}] [{_worker_host}] Requesting completion...")
+    print(f"{worker_prefix} Requesting completion...")
     completion = request_completion(_worker_host, prompt)
 
-    print(f"[{worker_prefix}] Running tournament...")
+    print(f"{worker_prefix} Running tournament...")
     results = run_tournament(
         completion=completion,
         opponents=OPPONENTS,
@@ -332,7 +332,7 @@ def one_vibe(run_id, num_rounds_per_matchup, episode_length, index):
         episode_length=episode_length,
     )
 
-    print(f"[{os.getpid()}] Persisting completion in history...")
+    print(f"{worker_prefix} Persisting completion in history...")
     persist_in_history(
         run_id=run_id,
         completion_id=completion_id,
