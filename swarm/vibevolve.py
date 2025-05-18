@@ -18,7 +18,6 @@ Mathematical discoveries from program search with large language models.
 Nature 625, 468–475 (2024).
 https://doi.org/10.1038/s41586-023-06924-6
 """
-import ast
 from functools import partial
 import json
 from multiprocessing import get_context
