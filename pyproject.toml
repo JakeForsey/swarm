@@ -1,0 +1,22 @@
+[project]
+name = "swarm"
+version = "0.1.0"
+description = "JAX RL environment (and agents written by LLMs and evolutionary strategies)"
+authors = [ {name = "Jake Forsey", email = "jakeforsey@googlemail.com"}, ]
+requires-python = ">= 3.12"
+dependencies = [
+    "altair>=5.5.0",
+    "ipykernel>=6.29.5",
+    "jax[cpu]>=0.6.0",
+    "matplotlib>=3.10.3",
+    "requests>=2.32.3",
+    "vegafusion>=2.0.2",
+    "vl-convert-python>=1.7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["swarm/"]
+
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"

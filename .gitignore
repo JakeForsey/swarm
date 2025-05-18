@@ -18,3 +18,4 @@ trainer_output/
 grpo/
 sft/
 swarm/agents/vibe.py
+swarm/swarm.egg-info/

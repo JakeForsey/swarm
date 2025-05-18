@@ -6,7 +6,7 @@ A fast (GPU accelerated) two player swarm based environment with a large number 
 
 ### 1. Run a Round Robin Tournament
 ```bash
-python  -m swarm tournament
+uv run python -m swarm tournament
 ```
 
 ```bash
@@ -46,14 +46,14 @@ python  -m swarm tournament
 
 ### 2. Animate a game between two agents
 ```bash
-python -m swarm animate <agent1> <agent2>
+uv run python -m swarm animate <agent1> <agent2>
 ```
 
 <img src=results/animations/random_vs_predator_swarm.gif width="300px" height="300px">
 
 ### 3. **FunSearch, MAP Elites inspired code generation**
 ```bash
-python -m swarm vibevolve
+uv run python -m swarm vibevolve
 ```
 
 <img src=results/plots/history-299e3db9.svg width="700px" height="500px">
