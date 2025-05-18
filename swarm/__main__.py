@@ -1,4 +1,5 @@
 import argparse
+import uuid
 
 DEFAULT_EPISODE_LENGTH = 128
 DEFAULT_NUM_ROUNDS_PER_MATCHUP = 32
@@ -41,6 +42,13 @@ def main():
         default=["cortex1:8080", "cortex2:8080", "cortex2:8081"],
         help="OpenAI compliant LLM server hosts",
     )
+    vibevolve_parser.add_argument(
+        "--run-id",
+        default=str(uuid.uuid1()).split("-")[0],
+        help="To continue a run, provide a run id",
+    )
+    vibevolve_parser.add_argument("--warmup-steps", default=16, type=int)
+    vibevolve_parser.add_argument("--num-steps", default=1024, type=int)
 
     args = parser.parse_args()
 
@@ -72,9 +80,12 @@ def main():
         init_jax()
         from swarm import vibevolve
         vibevolve.run(
+            run_id=args.run_id,
             hosts=args.hosts,
             num_rounds_per_matchup=args.num_rounds_per_matchup,
             episode_length=args.episode_length,
+            warmup_steps=args.warmup_steps,
+            num_steps=args.num_steps
         )
 
 if __name__ == "__main__":
