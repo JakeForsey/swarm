@@ -156,6 +156,10 @@ def get_elites(history):
         src = src_from_history(run_id, completion_id)
 
         if record["reward"] == -1.0:
+            # Errored
+            continue
+        if record["reward"] == 1.0:
+            # Saturated
             continue
         
         for result in record["results"]:
