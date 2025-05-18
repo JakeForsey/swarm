@@ -18,11 +18,11 @@ Mathematical discoveries from program search with large language models.
 Nature 625, 468–475 (2024).
 https://doi.org/10.1038/s41586-023-06924-6
 """
+import ast
 from functools import partial
 import json
 from multiprocessing import get_context
 import os
-import uuid
 import random
 import time
 import types
@@ -30,26 +30,12 @@ from typing import NamedTuple
 
 import requests
 
-from swarm.agents import load_agents, get_agent
+from swarm.agents import load_agents
 from swarm import tournament
 
-# OPPONENTS = load_agents()
-OPPONENTS = [
-    get_agent("simple"),
-    get_agent("vortex_swarm"),
-    get_agent("hunter_swarm"),
-    get_agent("predator_boid"),
-    get_agent("boid"),
-    get_agent("chaser"),
-    get_agent("concave_swarm"),
-    get_agent("center"),
-    get_agent("pairs"),
-    get_agent("random"),
-]
+OPPONENTS = load_agents()
 
 TMP_AGENT_NAME = "tmp_agent"
-
-# ---------------------------------- Workers ----------------------------------
 
 PROMPT = f"""\
 Please develop a competitive agent in python (using jax) that competes in a two player environment.
@@ -95,6 +81,8 @@ Remember:
  * All the inputs have a batch axis (B)
  * All the pieces inputs have a pieces axis (32)
  * Your full implementation should be contained in a single python code block"""
+
+# ---------------------------------- Workers ----------------------------------
 
 _worker_host = None
 
@@ -156,42 +144,41 @@ class Elite(NamedTuple):
     completion_id: str
     reward: float
     src: str
+    iteration: int
 
-def get_elites(run_id):
-    history_path = "results/vibevolve/rewards.jsonl"
-    if os.path.exists(history_path):
-        with open(history_path, "r") as f:
-            lines = f.readlines()
-    else:
-        lines = []
-
-    records = [json.loads(line) for line in lines]
-    records = [
-        record for record in records
-        if record["run_id"] == run_id
-    ]
-    
+def get_elites(history):
     elites_by_niche = {}
-    for record in records:
+    for iteration, record in enumerate(history):
         completion_id = record["completion_id"]
-        src = src_from_history(record["run_id"], completion_id)
-        
-        for niche in record["results"]:
-            niche_name = niche["name"]
+        run_id = record["run_id"]
+        src = src_from_history(run_id, completion_id)
 
-            reward = niche["reward"]
-            reward = reward if niche_name == TMP_AGENT_NAME else -reward
-            if reward == -1.0:
-                continue
-            
-            elite = elites_by_niche.get(niche_name, Elite(None, -1.0, None))
+        if record["reward"] == -1.0:
+            continue
+        
+        for result in record["results"]:
+            opponent = result["name"]
+            reward = result["reward"]
+            reward = reward if opponent == TMP_AGENT_NAME else -reward
+            # TODO: Consider other dimensions on which to generate niches
+            niche = (opponent,)
+            elite = elites_by_niche.get(niche, Elite(None, -1.0, None, -1))
             if reward >= elite.reward:
-                elite = Elite(completion_id, reward, src)
-                elites_by_niche[niche_name] = elite
-    
-    for niche_name, elite in elites_by_niche.items():
-        print(f"{niche_name:>20}: {elite.reward:.5f} [{elite.completion_id}]")
-    
+                elite = Elite(completion_id, reward, src, iteration)
+                elites_by_niche[niche] = elite
+
+    count_new_best = 0
+    elite_completion_ids = set()
+    for niche, elite in elites_by_niche.items():
+        elite_completion_ids.add(elite.completion_id)
+        niche_name = "|".join(niche)
+        new_best = elite.iteration == iteration
+        if new_best:
+            count_new_best += 1
+        print(f"[{elite.completion_id:>40}] {niche_name:>60}: {elite.reward:>4.2f} {elite.iteration:>3} {'NEW BEST' if new_best else ''}")
+    print(f"Unique elites: {len(elite_completion_ids)}")
+    print(f"New best elites: {count_new_best}")
+
     return elites_by_niche
 
 # ---------------------------------- History ----------------------------------
@@ -258,6 +245,19 @@ def agent_from_completion(completion):
         return None
     return agent
 
+def load_history(run_id):
+    history_path = "results/vibevolve/rewards.jsonl"
+    if os.path.exists(history_path):
+        with open(history_path, "r") as f:
+            lines = f.readlines()
+    else:
+        lines = []
+    records = [json.loads(line) for line in lines]
+    return [
+        record for record in records
+        if record["run_id"] == run_id
+    ]
+
 # ---------------------------------- Reward -----------------------------------
 
 def run_tournament(
@@ -289,8 +289,14 @@ def run_tournament(
 
 # --------------------------------- VibEvolve ---------------------------------
 
-def build_prompt(run_id):
-    elites = get_elites(run_id)
+def build_prompt(run_id, warmup_steps):
+    history = load_history(run_id)
+    if len(history) < warmup_steps:
+        print(f"Skipping elites, in warmup ({len(history)} < {warmup_steps})")
+        elites = {}
+    else:
+        elites = get_elites(history)
+    
     if elites:
         elite = random.choice(list(elites.values()))
         parent_completion_id = elite.completion_id
@@ -307,7 +313,13 @@ Attempt to improve the following agent:
     prompt = "\n".join([PROMPT, sampled_context, "/no_think"])    
     return prompt, parent_completion_id
 
-def one_vibe(run_id, num_rounds_per_matchup, episode_length, index):
+def one_vibe(
+        run_id,
+        num_rounds_per_matchup,
+        episode_length,
+        warmup_steps,
+        index,
+    ):
     global _worker_host
     worker_prefix = f"[{os.getpid()} {_worker_host}]"
 
@@ -319,7 +331,7 @@ def one_vibe(run_id, num_rounds_per_matchup, episode_length, index):
     print(f"{worker_prefix} {model=}")
 
     print(f"{worker_prefix} Building prompt...")
-    prompt, parent_completion_id = build_prompt(run_id)
+    prompt, parent_completion_id = build_prompt(run_id, warmup_steps)
 
     print(f"{worker_prefix} Requesting completion...")
     completion = request_completion(_worker_host, prompt)
@@ -342,13 +354,20 @@ def one_vibe(run_id, num_rounds_per_matchup, episode_length, index):
         completion=completion,
     )
 
-def run(hosts, num_rounds_per_matchup, episode_length):
-    run_id = str(uuid.uuid1()).split("-")[0]
+def run(
+        run_id,
+        hosts,
+        num_rounds_per_matchup,
+        episode_length,
+        warmup_steps,
+        num_steps,
+    ):
     print(f"{run_id=}")
-
     ctx = get_context("spawn")
     with ctx.Pool(processes=len(hosts)) as pool:
         for host in hosts:
             pool.apply_async(init_worker, args=(host,))
-        func = partial(one_vibe, run_id, num_rounds_per_matchup, episode_length)
-        pool.map(func, range(256))
+        func = partial(one_vibe, run_id, num_rounds_per_matchup, episode_length, warmup_steps)
+        pool.map(func, range(num_steps))
+
+    print("Complete.")
