@@ -50,6 +50,8 @@ def main():
     vibevolve_parser.add_argument("--warmup-steps", default=16, type=int)
     vibevolve_parser.add_argument("--num-steps", default=1024, type=int)
 
+    benchmark_parser = subparsers.add_parser("benchmark", help="Benchmark SwarmEnv performance")
+
     args = parser.parse_args()
 
     def init_jax():
@@ -87,6 +89,10 @@ def main():
             warmup_steps=args.warmup_steps,
             num_steps=args.num_steps
         )
+    elif args.command == "benchmark":
+        init_jax()
+        from swarm import benchmark
+        benchmark.run()
 
 if __name__ == "__main__":
     main()
