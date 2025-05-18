@@ -40,9 +40,12 @@ PROMPT = f"""\
 Please develop a competitive agent in python (using jax) that competes in a two player environment.
 
 The Rules:
+ * There is a 2D map (1.0 x 1.0) that wraps around at the edges
  * Each player gets 32 pieces they control
+ * Each piece starts with 1.0 health
  * If pieces from opposing teams collide they both take damage
- * Pieces regenerate some health each step
+ * If a piece reaches 0.0 health it dies
+ * Pieces that are alive regenerate some health each step
  * Each agent returns a dvx and a dvy; deltas that the environment will apply to their peices velocities (vx and vy)
 
 Here is an **example** implementation of the `act` interface:
