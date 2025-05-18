@@ -51,10 +51,12 @@ python -m swarm animate <agent1> <agent2>
 
 <img src=results/animations/random_vs_predator_swarm.gif width="300px" height="300px">
 
-### 3. **MAP Elites style prompt evolution**
+### 3. **FunSearch, MAP Elites inspired code generation**
 ```bash
 python -m swarm vibevolve
 ```
+
+<img src=results/plots/history-299e3db9.svg width="700px" height="500px">
 
 ## Example matches
 
