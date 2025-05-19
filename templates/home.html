@@ -1,0 +1,37 @@
+
+<!DOCTYPE html>
+<html>
+    <body style="margin-left:10%; margin-right:10%; margin-top:2%; margin-bottom: 2%;">
+        <h1 style="font-family: monospace">The race is on...</h1>
+
+        <h2 style="font-family: monospace">Prompt</h2>
+        <pre>{{ prompt }}</pre>
+
+        <h2 style="font-family: monospace">Completion</h2>
+        <textarea id="completion-textarea" style="white-space: pre-wrap; field-sizing: content; min-width: 100%; min-height: 300px">{{ completion }}</textarea>
+        <button id="submit-button">Submit</button>
+
+        <h2 style="font-family: monospace">Results</h2>
+        <pre id="results-pre" style="white-space: pre-wrap">{{ results }}</pre>
+    </body>
+    <script>
+        submitButton = document.getElementById('submit-button');
+        submitButton.addEventListener('click', async _ => {
+            document.getElementById("results-pre").innerHTML = "This is a spinner..."
+            completion = document.getElementById('completion-textarea').value;
+            body = JSON.stringify({completion: completion});
+            fetch(
+                '/submit',
+                {
+                    method: 'POST',
+                    body: body,
+                    headers: {"Content-type": "application/json; charset=UTF-8"}
+                },
+            )
+                .then((response) => response.json())
+                .then((results) => {
+                    document.getElementById("results-pre").innerHTML = results.results
+                })
+        });
+    </script>
+</html>
