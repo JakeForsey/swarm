@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -8,13 +10,8 @@ from swarm.vibevolve import (
     PROMPT,
     OPPONENTS,
     run_tournament,
+    persist_in_history,
 )
-
-# OPPONENTS = [
-#     get_agent("random"),
-#     get_agent("chaser"),
-#     get_agent("simple"),
-# ]
 
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
@@ -43,6 +40,7 @@ async def submit(completion_request: CompletionRequest, request: Request):
         num_rounds_per_matchup=16,
         episode_length=128,
     )
+    persist_in_history("dev", str(time.time()), None, time.time(), results, completion)
     for result in results:
         if result["name"] == "tmp_agent":
             result["name"] = "aggregate"
