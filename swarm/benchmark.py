@@ -5,6 +5,7 @@ import jax
 from swarm import tournament
 from swarm.agents import get_agent
 
+
 def run():
     device = jax.default_backend()
     num_rounds_per_matchup = 1024 * 8
@@ -34,4 +35,6 @@ def run():
     steps = batch_size * episode_length
     steps_per_second = steps / seconds
 
-    print(f"{device=} | {batch_size=} | {steps=:,} | {seconds=:.3f} | {steps_per_second=:,.3f}")
+    print(
+        f"{device=} | {batch_size=} | {steps=:,} | {seconds=:.3f} | {steps_per_second=:,.3f}"
+    )

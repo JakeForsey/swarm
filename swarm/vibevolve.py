@@ -13,11 +13,12 @@ AlphaEvolve: A coding agent for scientific and algorithmic discovery.
 Technical report. 2025.
 https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/AlphaEvolve.pdf
 
-Romera-Paredes, B., Barekatain, M., Novikov, A. et al. 
+Romera-Paredes, B., Barekatain, M., Novikov, A. et al.
 Mathematical discoveries from program search with large language models.
 Nature 625, 468–475 (2024).
 https://doi.org/10.1038/s41586-023-06924-6
 """
+
 from functools import partial
 import json
 from multiprocessing import get_context
@@ -88,35 +89,37 @@ Remember:
 
 _worker_host = None
 
+
 def init_worker(host):
     random.seed(host)
     global _worker_host
     _worker_host = host
     print(f"Initialized worker with host: {_worker_host} (pid={os.getpid()})")
 
+
 # ------------------------------ Llama Requests -------------------------------
 
+
 def request_model(host):
-    response = requests.get(
-        f"http://{host}/models"
-    )
+    response = requests.get(f"http://{host}/models")
     data = response.json()["data"]
     model = data[0]["id"].split("/")[-1]
     return model
+
 
 def request_completion(host, prompt):
     response = requests.post(
         f"http://{host}/v1/chat/completions",
         json={
-            "messages":[
-                {"role": "user","content": prompt},
+            "messages": [
+                {"role": "user", "content": prompt},
             ],
             "stream": False,
             "cache_prompt": False,
             "samplers": "edkypmxt",
             "temperature": 0.8,
             "dynatemp_range": 0,
-            "dynatemp_exponent": 1, 
+            "dynatemp_exponent": 1,
             "top_k": 40,
             "top_p": 0.95,
             "min_p": 0.05,
@@ -141,7 +144,9 @@ def request_completion(host, prompt):
     completion = choice["message"]["content"]
     return completion
 
+
 # --------------------------------- MAP Elites --------------------------------
+
 
 class Elite(NamedTuple):
     completion_id: str
@@ -162,7 +167,8 @@ def quantise(x, num_bins=3, min_val=-1.0, max_val=1.0):
 def get_niche(results):
     sorted_results = sorted(results, key=lambda x: x["name"])
     return tuple(
-        quantise(result["reward"]) for result in sorted_results
+        quantise(result["reward"])
+        for result in sorted_results
         if result["name"] != TMP_AGENT_NAME
     )
 
@@ -200,37 +206,41 @@ def get_elites(history):
         new_best = elite.iteration == iteration
         if new_best:
             count_new_best += 1
-        print(f"{elite.completion_id:>25} {niche_name:>60}: {elite.reward:>5.2f} {elite.iteration:>4} {'NEW BEST' if new_best else ''}")
+        print(
+            f"{elite.completion_id:>25} {niche_name:>60}: {elite.reward:>5.2f} {elite.iteration:>4} {'NEW BEST' if new_best else ''}"
+        )
     print(f"Unique elites: {len(elite_completion_ids)}")
     print(f"New best elites: {count_new_best}")
 
     return elites_by_niche
 
+
 # ---------------------------------- History ----------------------------------
+
 
 def completion_directory(run_id, completion_id):
     return f"results/vibevolve/{run_id}/{completion_id}"
 
+
 def persist_in_history(
-        run_id,
-        completion_id,
-        parent_completion_id,
-        start_timestamp,
-        results,
-        completion,
+    run_id,
+    completion_id,
+    parent_completion_id,
+    start_timestamp,
+    results,
+    completion,
 ):
     tmp_agent_result = [
-        result for result in results
-        if result["name"] == TMP_AGENT_NAME
+        result for result in results if result["name"] == TMP_AGENT_NAME
     ]
     reward = tmp_agent_result[0]["reward"]
 
     directory = completion_directory(run_id, completion_id)
     os.makedirs(directory, exist_ok=True)
-    
+
     with open(f"{directory}/completion.txt", "w") as f:
         f.write(completion)
-    
+
     with open("results/vibevolve/rewards.jsonl", "a") as f:
         data = {
             "run_id": run_id,
@@ -243,12 +253,14 @@ def persist_in_history(
         }
         f.write(json.dumps(data) + "\n")
 
+
 def src_from_history(run_id, completion_id):
     directory = completion_directory(run_id, completion_id)
     path = f"{directory}/completion.txt"
     with open(path, "r") as f:
         completion = f.read()
     return src_from_completion(completion)
+
 
 def src_from_completion(completion):
     if "```python" not in completion:
@@ -258,6 +270,7 @@ def src_from_completion(completion):
         return None
     src, *_ = src.split("```")
     return src
+
 
 def agent_from_completion(completion):
     src = src_from_completion(completion)
@@ -270,6 +283,7 @@ def agent_from_completion(completion):
         return None
     return agent
 
+
 def load_history(run_id):
     history_path = "results/vibevolve/rewards.jsonl"
     if os.path.exists(history_path):
@@ -278,19 +292,18 @@ def load_history(run_id):
     else:
         lines = []
     records = [json.loads(line) for line in lines]
-    return [
-        record for record in records
-        if record["run_id"] == run_id
-    ]
+    return [record for record in records if record["run_id"] == run_id]
+
 
 # ---------------------------------- Reward -----------------------------------
 
+
 def run_tournament(
-        completion,
-        opponents,
-        num_rounds_per_matchup,
-        episode_length,
-    ):
+    completion,
+    opponents,
+    num_rounds_per_matchup,
+    episode_length,
+):
     try:
         agent = agent_from_completion(completion)
         results = tournament.run(
@@ -305,14 +318,15 @@ def run_tournament(
     except Exception:
         # If the agent failed, it gets very lowest possible rewards
         results = [
-            {"name": opp.__name__.split(".")[-1], "reward": 1.0}
-            for opp in opponents
+            {"name": opp.__name__.split(".")[-1], "reward": 1.0} for opp in opponents
         ]
         results.append({"name": TMP_AGENT_NAME, "reward": -1.0})
 
     return results
 
+
 # --------------------------------- VibEvolve ---------------------------------
+
 
 def build_prompt(run_id, warmup_steps):
     history = load_history(run_id)
@@ -334,17 +348,18 @@ Attempt to improve the following agent:
 {elite.src}
 ```
 """
-    
-    prompt = "\n".join([PROMPT, sampled_context, "/no_think"])    
+
+    prompt = "\n".join([PROMPT, sampled_context, "/no_think"])
     return prompt, parent_completion_id
 
+
 def one_vibe(
-        run_id,
-        num_rounds_per_matchup,
-        episode_length,
-        warmup_steps,
-        index,
-    ):
+    run_id,
+    num_rounds_per_matchup,
+    episode_length,
+    warmup_steps,
+    index,
+):
     global _worker_host
     worker_prefix = f"[{os.getpid()} {_worker_host}]"
 
@@ -379,20 +394,23 @@ def one_vibe(
         completion=completion,
     )
 
+
 def run(
-        run_id,
-        hosts,
-        num_rounds_per_matchup,
-        episode_length,
-        warmup_steps,
-        num_steps,
-    ):
+    run_id,
+    hosts,
+    num_rounds_per_matchup,
+    episode_length,
+    warmup_steps,
+    num_steps,
+):
     print(f"{run_id=}")
     ctx = get_context("spawn")
     with ctx.Pool(processes=len(hosts)) as pool:
         for host in hosts:
             pool.apply_async(init_worker, args=(host,))
-        func = partial(one_vibe, run_id, num_rounds_per_matchup, episode_length, warmup_steps)
+        func = partial(
+            one_vibe, run_id, num_rounds_per_matchup, episode_length, warmup_steps
+        )
         pool.map(func, range(num_steps))
 
     print("Complete.")

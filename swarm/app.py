@@ -15,8 +15,10 @@ from swarm.vibevolve import (
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 
+
 class CompletionRequest(BaseModel):
     completion: str
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -27,8 +29,9 @@ async def home(request: Request):
             "prompt": PROMPT,
             "completion": "",
             "results": "",
-        }
+        },
     )
+
 
 @app.post("/submit")
 async def submit(completion_request: CompletionRequest, request: Request):
@@ -45,11 +48,8 @@ async def submit(completion_request: CompletionRequest, request: Request):
             result["name"] = "aggregate"
         else:
             result["reward"] = -result["reward"]
-    results.sort(
-        key=lambda x: -x["reward"] if x["name"] != "aggregate" else -2.0
+    results.sort(key=lambda x: -x["reward"] if x["name"] != "aggregate" else -2.0)
+    formatted_results = "\n".join(
+        [f"{result['name']:>15} {result['reward']:.2f}" for result in results]
     )
-    formatted_results = "\n".join([
-        f"{result['name']:>15} {result['reward']:.2f}"
-        for result in results
-    ])
     return {"results": formatted_results}

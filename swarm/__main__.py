@@ -4,21 +4,24 @@ import uuid
 DEFAULT_EPISODE_LENGTH = 128
 DEFAULT_NUM_ROUNDS_PER_MATCHUP = 32
 
+
 def add_episode_length_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--episode-length",
         type=int,
         default=DEFAULT_EPISODE_LENGTH,
-        help=f"Episode length (default: {DEFAULT_EPISODE_LENGTH})"
+        help=f"Episode length (default: {DEFAULT_EPISODE_LENGTH})",
     )
+
 
 def add_num_rounds_per_matchup_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--num-rounds-per-matchup",
         type=int,
         default=DEFAULT_NUM_ROUNDS_PER_MATCHUP,
-        help=f"Number of rounds per matchup (default: {DEFAULT_NUM_ROUNDS_PER_MATCHUP})"
+        help=f"Number of rounds per matchup (default: {DEFAULT_NUM_ROUNDS_PER_MATCHUP})",
     )
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -38,7 +41,7 @@ def main():
     add_episode_length_argument(vibevolve_parser)
     vibevolve_parser.add_argument(
         "--hosts",
-        nargs='+',
+        nargs="+",
         default=["cortex1:8080", "cortex2:8080", "cortex2:8081"],
         help="OpenAI compliant LLM server hosts",
     )
@@ -56,6 +59,7 @@ def main():
 
     def init_jax():
         import jax
+
         jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
         jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
         jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
@@ -64,6 +68,7 @@ def main():
     if args.command == "tournament":
         init_jax()
         from swarm import tournament
+
         results = tournament.run(
             num_rounds_per_matchup=args.num_rounds_per_matchup,
             episode_length=args.episode_length,
@@ -73,6 +78,7 @@ def main():
     elif args.command == "animate":
         init_jax()
         from swarm import animate
+
         animate.run(
             agent1_name=args.agent1,
             agent2_name=args.agent2,
@@ -81,18 +87,21 @@ def main():
     elif args.command == "vibevolve":
         init_jax()
         from swarm import vibevolve
+
         vibevolve.run(
             run_id=args.run_id,
             hosts=args.hosts,
             num_rounds_per_matchup=args.num_rounds_per_matchup,
             episode_length=args.episode_length,
             warmup_steps=args.warmup_steps,
-            num_steps=args.num_steps
+            num_steps=args.num_steps,
         )
     elif args.command == "benchmark":
         init_jax()
         from swarm import benchmark
+
         benchmark.run()
+
 
 if __name__ == "__main__":
     main()
