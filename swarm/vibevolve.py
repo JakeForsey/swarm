@@ -34,14 +34,14 @@ from swarm import tournament
 
 # OPPONENTS = load_agents()
 OPPONENTS = [
-    get_agent("random"),
+    get_agent("boid"),
     get_agent("center"),
     get_agent("chaser"),
-    get_agent("pairs"),
-    get_agent("boid"),
     get_agent("concave_swarm"),
-    get_agent("predator_boid"),
     get_agent("hunter_swarm"),
+    get_agent("pairs"),
+    get_agent("predator_boid"),
+    get_agent("random"),
     get_agent("simple"),
     get_agent("vortex_swarm")
 ]
@@ -101,6 +101,7 @@ Remember:
 _worker_host = None
 
 def init_worker(host):
+    random.seed(host)
     global _worker_host
     _worker_host = host
     print(f"Initialized worker with host: {_worker_host} (pid={os.getpid()})")
@@ -329,14 +330,15 @@ def build_prompt(run_id, warmup_steps):
     history = load_history(run_id)
     if len(history) < warmup_steps:
         print(f"Skipping elites, in warmup ({len(history)} < {warmup_steps})")
-        elites = {}
+        parent_completion_id = None
+        sampled_context = ""
     else:
         elites = get_elites(history)
-    
-    if elites:
-        population = list(elites.values())
-        weights = [(elite.reward + 1) / 2 for elite in elites.values()]
-        elite = random.choices(population, weights, k=1)[0]
+        elites = sorted(elites.values(), reverse=True, key=lambda elite: elite.reward)
+        elites = elites[:10]
+        weights = [((elite.reward + 1) / 2) ** 3 for elite in elites]
+        elite = random.choices(elites, weights, k=1)[0]
+        print(f"Sampled elite {elite.reward=} {elite.iteration=}")
         parent_completion_id = elite.completion_id
         sampled_context = f"""\
 Attempt to improve the following agent:
@@ -344,9 +346,6 @@ Attempt to improve the following agent:
 {elite.src}
 ```
 """
-    else:
-        parent_completion_id = None
-        sampled_context = ""
     
     prompt = "\n".join([PROMPT, sampled_context, "/no_think"])    
     return prompt, parent_completion_id
