@@ -29,10 +29,22 @@ from typing import NamedTuple
 
 import requests
 
-from swarm.agents import load_agents
+from swarm.agents import load_agents, get_agent
 from swarm import tournament
 
-OPPONENTS = load_agents()
+# OPPONENTS = load_agents()
+OPPONENTS = [
+    get_agent("random"),
+    get_agent("center"),
+    get_agent("chaser"),
+    get_agent("pairs"),
+    get_agent("boid"),
+    get_agent("concave_swarm"),
+    get_agent("predator_boid"),
+    get_agent("hunter_swarm"),
+    get_agent("simple"),
+    get_agent("vortex_swarm")
+]
 
 TMP_AGENT_NAME = "tmp_agent"
 
@@ -148,40 +160,58 @@ class Elite(NamedTuple):
     src: str
     iteration: int
 
+
+def quantise(x, num_bins=3, min_val=-1.0, max_val=1.0):
+    x = max(min_val, min(max_val, x))
+    bin_width = (max_val - min_val) / num_bins
+    bin_index = int((x - min_val) / bin_width)
+    if bin_index == num_bins:
+        bin_index -= 1
+    return bin_index
+
+
+def get_niche(results):
+    sorted_results = sorted(results, key=lambda x: x["name"])
+    return tuple(
+        quantise(result["reward"]) for result in sorted_results
+        if result["name"] != TMP_AGENT_NAME
+    )
+
+
 def get_elites(history):
     elites_by_niche = {}
     for iteration, record in enumerate(history):
         completion_id = record["completion_id"]
         run_id = record["run_id"]
-        src = src_from_history(run_id, completion_id)
+        reward = record["reward"]
 
-        if record["reward"] == -1.0:
+        if reward == -1.0:
             # Errored
             continue
-        if record["reward"] == 1.0:
-            # Saturated
-            continue
-        
-        for result in record["results"]:
-            opponent = result["name"]
-            reward = result["reward"]
-            reward = reward if opponent == TMP_AGENT_NAME else -reward
-            # TODO: Consider other dimensions on which to generate niches
-            niche = (opponent,)
-            elite = elites_by_niche.get(niche, Elite(None, -1.0, None, -1))
-            if reward >= elite.reward:
-                elite = Elite(completion_id, reward, src, iteration)
-                elites_by_niche[niche] = elite
 
+        src = src_from_history(run_id, completion_id)
+
+        # Make results relative to the tmp agent
+        for result in record["results"]:
+            if result["name"] != TMP_AGENT_NAME:
+                result["reward"] = -result["reward"]
+
+        niche = get_niche(record["results"])
+        elite = elites_by_niche.get(niche, Elite(None, -1.0, None, -1))
+        if reward >= elite.reward:
+            elite = Elite(completion_id, reward, src, iteration)
+            elites_by_niche[niche] = elite
+
+    # Log elite population details
     count_new_best = 0
     elite_completion_ids = set()
-    for niche, elite in elites_by_niche.items():
+    for niche, elite in sorted(elites_by_niche.items()):
         elite_completion_ids.add(elite.completion_id)
-        niche_name = "|".join(niche)
+        niche_name = "|".join(map(str, niche))
         new_best = elite.iteration == iteration
         if new_best:
             count_new_best += 1
-        print(f"[{elite.completion_id:>40}] {niche_name:>60}: {elite.reward:>4.2f} {elite.iteration:>3} {'NEW BEST' if new_best else ''}")
+        print(f"{elite.completion_id:>25} {niche_name:>60}: {elite.reward:>5.2f} {elite.iteration:>4} {'NEW BEST' if new_best else ''}")
     print(f"Unique elites: {len(elite_completion_ids)}")
     print(f"New best elites: {count_new_best}")
 
@@ -304,7 +334,9 @@ def build_prompt(run_id, warmup_steps):
         elites = get_elites(history)
     
     if elites:
-        elite = random.choice(list(elites.values()))
+        population = list(elites.values())
+        weights = [(elite.reward + 1) / 2 for elite in elites.values()]
+        elite = random.choices(population, weights, k=1)[0]
         parent_completion_id = elite.completion_id
         sampled_context = f"""\
 Attempt to improve the following agent:
