@@ -5,7 +5,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from swarm.agents import get_agent
 from swarm.vibevolve import (
     PROMPT,
     OPPONENTS,

@@ -50,7 +50,7 @@ def main():
     vibevolve_parser.add_argument("--warmup-steps", default=16, type=int)
     vibevolve_parser.add_argument("--num-steps", default=1024, type=int)
 
-    benchmark_parser = subparsers.add_parser("benchmark", help="Benchmark SwarmEnv performance")
+    subparsers.add_parser("benchmark", help="Benchmark SwarmEnv performance")
 
     args = parser.parse_args()
 

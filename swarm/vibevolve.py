@@ -29,26 +29,14 @@ from typing import NamedTuple
 
 import requests
 
-from swarm.agents import load_agents, get_agent
+from swarm.agents import load_agents
 from swarm import tournament
 
-# OPPONENTS = load_agents()
-OPPONENTS = [
-    get_agent("boid"),
-    get_agent("center"),
-    get_agent("chaser"),
-    get_agent("concave_swarm"),
-    get_agent("hunter_swarm"),
-    get_agent("pairs"),
-    get_agent("predator_boid"),
-    get_agent("random"),
-    get_agent("simple"),
-    get_agent("vortex_swarm")
-]
+OPPONENTS = load_agents()
 
 TMP_AGENT_NAME = "tmp_agent"
 
-PROMPT = f"""\
+PROMPT = """\
 Please develop a competitive agent in python (using jax) that competes in a two player environment.
 
 The Rules:
@@ -243,7 +231,7 @@ def persist_in_history(
     with open(f"{directory}/completion.txt", "w") as f:
         f.write(completion)
     
-    with open(f"results/vibevolve/rewards.jsonl", "a") as f:
+    with open("results/vibevolve/rewards.jsonl", "a") as f:
         data = {
             "run_id": run_id,
             "completion_id": completion_id,
@@ -278,7 +266,7 @@ def agent_from_completion(completion):
     try:
         agent = types.ModuleType(TMP_AGENT_NAME)
         exec(src, agent.__dict__)
-    except:
+    except Exception:
         return None
     return agent
 
