@@ -18,8 +18,8 @@ dependencies = [
 where = ["swarm/"]
 
 [tool.ruff]
-# Omit all agent code (which is auto generated)
-extend-exclude = ["swarm/agents/"]
+# Omit all agent code (which is auto generated) and Jupyter Notebooks
+extend-exclude = ["swarm/agents/", "**/*.ipynb"]
 
 [build-system]
 requires = ["setuptools >= 61.0"]
