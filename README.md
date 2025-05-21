@@ -10,38 +10,40 @@ uv run python -m swarm tournament
 ```
 
 ```bash
-        vibevolve_v5 reward: 0.78
-        vibevolve_v4 reward: 0.77
-              simple reward: 0.73
-        vibevolve_v3 reward: 0.65
-              center reward: 0.57
-        health_swarm reward: 0.47
-        vibevolve_v2 reward: 0.44
-     vortex_swarm_v2 reward: 0.38
-        hunter_swarm reward: 0.37
-      predator_swarm reward: 0.35
-         param_swarm reward: 0.24
-        vibevolve_v1 reward: 0.18
-         squad_swarm reward: 0.15
-        vortex_swarm reward: 0.13
-       predator_boid reward: 0.10
-        pincer_swarm reward: 0.04
-        spiral_swarm reward: -0.03
-        center_swarm reward: -0.09
-       concave_swarm reward: -0.11
-      tactical_swarm reward: -0.13
-      fortress_swarm reward: -0.18
-      adaptive_swarm reward: -0.19
-         train_swarm reward: -0.31
-                boid reward: -0.36
-               pairs reward: -0.42
-          smart_boid reward: -0.49
-          ring_swarm reward: -0.52
-             fleeing reward: -0.56
-            clusters reward: -0.57
+        vibevolve_v7 reward: 0.89
+        vibevolve_v5 reward: 0.71
+        vibevolve_v6 reward: 0.70
+        vibevolve_v4 reward: 0.67
+              simple reward: 0.64
+              center reward: 0.61
+        vibevolve_v3 reward: 0.60
+        health_swarm reward: 0.51
+        vibevolve_v2 reward: 0.42
+      predator_swarm reward: 0.36
+        hunter_swarm reward: 0.33
+     vortex_swarm_v2 reward: 0.28
+        vibevolve_v1 reward: 0.14
+         param_swarm reward: 0.12
+       predator_boid reward: 0.07
+         squad_swarm reward: 0.02
+        vortex_swarm reward: 0.02
+        spiral_swarm reward: -0.05
+        center_swarm reward: -0.10
+        pincer_swarm reward: -0.10
+      tactical_swarm reward: -0.19
+      fortress_swarm reward: -0.22
+       concave_swarm reward: -0.23
+      adaptive_swarm reward: -0.27
+                boid reward: -0.31
+               pairs reward: -0.46
+         train_swarm reward: -0.46
+            clusters reward: -0.52
+          smart_boid reward: -0.57
+          ring_swarm reward: -0.58
+             fleeing reward: -0.63
         static_swarm reward: -0.71
-              chaser reward: -0.78
-              random reward: -0.91
+              chaser reward: -0.73
+              random reward: -0.95
 ```
 
 ### 2. Animate a game between two agents
