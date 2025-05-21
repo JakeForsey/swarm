@@ -56,6 +56,8 @@ uv run python -m swarm animate <agent1> <agent2>
 uv run python -m swarm vibevolve
 ```
 
+<img src=results/plots/history-299e3db9.svg width="700px" height="500px">
+
 ### 4. Benchmark environment speed
 ```bash
 uv run python -m swarm benchmark
@@ -86,8 +88,6 @@ device='gpu' | batch_size=   262,144 | steps=  33,554,432 | seconds= 2.692 | ste
 device='gpu' | batch_size=   524,288 | steps=  67,108,864 | seconds= 4.949 | steps_per_second= 13,561,300
 device='gpu' | batch_size= 1,048,576 | steps= 134,217,728 | seconds= 9.562 | steps_per_second= 14,036,486
 ```
-
-<img src=results/plots/history-299e3db9.svg width="700px" height="500px">
 
 ## Example matches
 
