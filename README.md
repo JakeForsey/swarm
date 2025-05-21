@@ -49,7 +49,7 @@ uv run python -m swarm tournament
 uv run python -m swarm animate <agent1> <agent2>
 ```
 
-<img src=results/animations/random_vs_predator_swarm.gif width="300px" height="300px">
+<img src=results/animations/vibevolve_v6_vs_vortex_swarm_v2.gif width="300px" height="300px">
 
 ### 3. **FunSearch, MAP Elites inspired code generation**
 ```bash
