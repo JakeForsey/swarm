@@ -34,9 +34,7 @@ from swarm.agents import load_agents
 from swarm import tournament
 
 OPPONENTS = load_agents()
-
 TMP_AGENT_NAME = "tmp_agent"
-
 PROMPT = """\
 Please develop a competitive agent in python (using jax) that competes in a two player environment.
 
@@ -85,7 +83,13 @@ Remember:
  * All the pieces inputs have a pieces axis (32)
  * Your full implementation should be contained in a single python code block"""
 
-# ---------------------------------- Workers ----------------------------------
+
+class Elite(NamedTuple):
+    completion_id: str
+    reward: float
+    src: str
+    iteration: int
+
 
 _worker_host = None
 
@@ -97,10 +101,8 @@ def init_worker(host):
     print(f"Initialized worker with host: {_worker_host} (pid={os.getpid()})")
 
 
-# ------------------------------ Llama Requests -------------------------------
-
-
 def request_model(host):
+    """Get the model deployed at a specific host running llama-server."""
     response = requests.get(f"http://{host}/models")
     data = response.json()["data"]
     model = data[0]["id"].split("/")[-1]
@@ -108,6 +110,7 @@ def request_model(host):
 
 
 def request_completion(host, prompt):
+    """Request a completion for a prompt from a llama-server host."""
     response = requests.post(
         f"http://{host}/v1/chat/completions",
         json={
@@ -145,16 +148,6 @@ def request_completion(host, prompt):
     return completion
 
 
-# --------------------------------- MAP Elites --------------------------------
-
-
-class Elite(NamedTuple):
-    completion_id: str
-    reward: float
-    src: str
-    iteration: int
-
-
 def quantise(x, num_bins=3, min_val=-1.0, max_val=1.0):
     x = max(min_val, min(max_val, x))
     bin_width = (max_val - min_val) / num_bins
@@ -165,6 +158,10 @@ def quantise(x, num_bins=3, min_val=-1.0, max_val=1.0):
 
 
 def get_niche(results):
+    """
+    In order to create a niche, convert the continuos rewards into bins and
+    sort the rewards by the opponent name.
+    """
     sorted_results = sorted(results, key=lambda x: x["name"])
     return tuple(
         quantise(result["reward"])
@@ -174,6 +171,8 @@ def get_niche(results):
 
 
 def get_elites(history):
+    """Get the best source code for each niche."""
+    # TODO: Implement multiple islands of niches
     elites_by_niche = {}
     for iteration, record in enumerate(history):
         completion_id = record["completion_id"]
@@ -215,9 +214,6 @@ def get_elites(history):
     return elites_by_niche
 
 
-# ---------------------------------- History ----------------------------------
-
-
 def completion_directory(run_id, completion_id):
     return f"results/vibevolve/{run_id}/{completion_id}"
 
@@ -230,6 +226,7 @@ def persist_in_history(
     results,
     completion,
 ):
+    """Save the completion and its results in the history."""
     tmp_agent_result = [
         result for result in results if result["name"] == TMP_AGENT_NAME
     ]
@@ -238,9 +235,11 @@ def persist_in_history(
     directory = completion_directory(run_id, completion_id)
     os.makedirs(directory, exist_ok=True)
 
+    # Raw completion
     with open(f"{directory}/completion.txt", "w") as f:
         f.write(completion)
 
+    # An index and metadata for a completion
     with open("results/vibevolve/rewards.jsonl", "a") as f:
         data = {
             "run_id": run_id,
@@ -295,15 +294,13 @@ def load_history(run_id):
     return [record for record in records if record["run_id"] == run_id]
 
 
-# ---------------------------------- Reward -----------------------------------
-
-
-def run_tournament(
+def evaluate(
     completion,
     opponents,
     num_rounds_per_matchup,
     episode_length,
 ):
+    """Evaluate the performance of a completion against the opponents."""
     try:
         agent = agent_from_completion(completion)
         results = tournament.run(
@@ -325,10 +322,7 @@ def run_tournament(
     return results
 
 
-# --------------------------------- VibEvolve ---------------------------------
-
-
-def build_prompt(run_id, warmup_steps):
+def sample_prompt(run_id, warmup_steps, temperature, top_n):
     history = load_history(run_id)
     if len(history) < warmup_steps:
         print(f"Skipping elites, in warmup ({len(history)} < {warmup_steps})")
@@ -337,11 +331,12 @@ def build_prompt(run_id, warmup_steps):
     else:
         elites = get_elites(history)
         elites = sorted(elites.values(), reverse=True, key=lambda elite: elite.reward)
-        elites = elites[:10]
-        weights = [((elite.reward + 1) / 2) ** 3 for elite in elites]
+        elites = elites[:top_n]
+        weights = [((elite.reward + 1) / 2) ** temperature for elite in elites]
         elite = random.choices(elites, weights, k=1)[0]
         print(f"Sampled elite {elite.reward=} {elite.iteration=}")
         parent_completion_id = elite.completion_id
+        # Append the sampled elite to the prompt
         sampled_context = f"""\
 Attempt to improve the following agent:
 ```python
@@ -353,11 +348,13 @@ Attempt to improve the following agent:
     return prompt, parent_completion_id
 
 
-def one_vibe(
+def step(
     run_id,
     num_rounds_per_matchup,
     episode_length,
     warmup_steps,
+    temperature,
+    top_n,
     index,
 ):
     global _worker_host
@@ -370,14 +367,19 @@ def one_vibe(
     model = request_model(_worker_host)
     print(f"{worker_prefix} {model=}")
 
-    print(f"{worker_prefix} Building prompt...")
-    prompt, parent_completion_id = build_prompt(run_id, warmup_steps)
+    print(f"{worker_prefix} Sampling a prompt...")
+    prompt, parent_completion_id = sample_prompt(
+        run_id,
+        warmup_steps,
+        temperature,
+        top_n,
+    )
 
     print(f"{worker_prefix} Requesting completion...")
     completion = request_completion(_worker_host, prompt)
 
-    print(f"{worker_prefix} Running tournament...")
-    results = run_tournament(
+    print(f"{worker_prefix} Running evaluation...")
+    results = evaluate(
         completion=completion,
         opponents=OPPONENTS,
         num_rounds_per_matchup=num_rounds_per_matchup,
@@ -402,6 +404,8 @@ def run(
     episode_length,
     warmup_steps,
     num_steps,
+    temperature,
+    top_n,
 ):
     print(f"{run_id=}")
     ctx = get_context("spawn")
@@ -409,7 +413,13 @@ def run(
         for host in hosts:
             pool.apply_async(init_worker, args=(host,))
         func = partial(
-            one_vibe, run_id, num_rounds_per_matchup, episode_length, warmup_steps
+            step,
+            run_id,
+            num_rounds_per_matchup,
+            episode_length,
+            warmup_steps,
+            temperature,
+            top_n,
         )
         pool.map(func, range(num_steps))
 
