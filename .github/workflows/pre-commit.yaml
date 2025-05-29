@@ -1,4 +1,4 @@
-name: Example
+name: Pre-commit
 
 on: push
 
