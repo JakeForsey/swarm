@@ -1452,6 +1452,15 @@ wheels = [
 ]
 
 [[package]]
+name = "redis"
+version = "6.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/af/e875d57383653e5d9065df8552de1deb7576b4d3cf3af90cde2e79ff7f65/redis-6.1.0.tar.gz", hash = "sha256:c928e267ad69d3069af28a9823a07726edf72c7e37764f43dc0123f37928c075", size = 4629300, upload-time = "2025-05-13T12:16:57.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/5f/cf36360f80ae233bd1836442f5127818cfcfc7b1846179b60b2e9a4c45c9/redis-6.1.0-py3-none-any.whl", hash = "sha256:3b72622f3d3a89df2a6041e82acd896b0e67d9f54e9bcd906d091d23ba5219f6", size = 273750, upload-time = "2025-05-13T12:16:55.661Z" },
+]
+
+[[package]]
 name = "referencing"
 version = "0.36.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1552,6 +1561,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c3/f6/ada6c3d9b803a9eb7bc9c8b3f3cebf7d779bbbb056cd7e3fc150e4c74c00/rpds_py-0.25.0-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:5bbfbd9c74c4dd74815bd532bf29bedea6d27d38f35ef46f9754172a14e4c655", size = 558335, upload-time = "2025-05-15T13:40:13.695Z" },
     { url = "https://files.pythonhosted.org/packages/68/9a/7d269e8f1bfe3143e699334ca0b578e16b37e6505bf10dca8c02aa8addc8/rpds_py-0.25.0-cp313-cp313t-win32.whl", hash = "sha256:90dbd2c42cb6463c07020695800ae8f347e7dbeff09da2975a988e467b624539", size = 218761, upload-time = "2025-05-15T13:40:16.043Z" },
     { url = "https://files.pythonhosted.org/packages/16/16/f5843b19b7bfd16d63b960cf4c646953010886cc62dd41b00854d77b0eed/rpds_py-0.25.0-cp313-cp313t-win_amd64.whl", hash = "sha256:8c2ad59c4342a176cb3e0d5753e1c911eabc95c210fc6d0e913c32bf560bf012", size = 232634, upload-time = "2025-05-15T13:40:17.633Z" },
+]
+
+[[package]]
+name = "rq"
+version = "2.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/d8/8dd3c33b1854e1a5247fc9945e5c052dbac61c3a6392b1e2ff50d089c2e7/rq-2.3.3.tar.gz", hash = "sha256:20c41c977b6f27c852a41bd855893717402bae7b8d9607dca21fe9dd55453e22", size = 649348, upload-time = "2025-05-10T15:03:08.586Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/66/25/2e17899e70317497cf0fe2d2742ba464becf7e996f65e17b48440de88635/rq-2.3.3-py3-none-any.whl", hash = "sha256:2202c4409c4c527ac4bee409867d6c02515dd110030499eb0de54c7374aee0ce", size = 101012, upload-time = "2025-05-10T15:03:02.126Z" },
 ]
 
 [[package]]
@@ -1680,6 +1702,7 @@ dependencies = [
     { name = "jax" },
     { name = "matplotlib" },
     { name = "requests" },
+    { name = "rq" },
     { name = "vegafusion" },
     { name = "vl-convert-python" },
 ]
@@ -1706,6 +1729,7 @@ requires-dist = [
     { name = "jax", extras = ["cpu"], specifier = ">=0.6.0" },
     { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "requests", specifier = ">=2.32.3" },
+    { name = "rq", specifier = ">=2.3.3" },
     { name = "vegafusion", specifier = ">=2.0.2" },
     { name = "vl-convert-python", specifier = ">=1.7.0" },
 ]

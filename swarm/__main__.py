@@ -1,7 +1,7 @@
 import argparse
 import uuid
 
-from swarm import animate, benchmark, tournament, vibevolve
+from swarm import animate, benchmark, tournament, vibevolve, selfplay
 
 import jax
 
@@ -32,6 +32,15 @@ def add_num_rounds_per_matchup_argument(parser: argparse.ArgumentParser):
     )
 
 
+def add_hosts_argument(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--hosts",
+        nargs="+",
+        default=["cortex1:8080", "cortex2:8080", "cortex2:8081"],
+        help="OpenAI compliant LLM server hosts",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", help="Sub-command help")
@@ -51,12 +60,7 @@ def main():
     vibevolve_parser = subparsers.add_parser("vibevolve", help="VibEvolve new agents")
     add_num_rounds_per_matchup_argument(vibevolve_parser)
     add_episode_length_argument(vibevolve_parser)
-    vibevolve_parser.add_argument(
-        "--hosts",
-        nargs="+",
-        default=["cortex1:8080", "cortex2:8080", "cortex2:8081"],
-        help="OpenAI compliant LLM server hosts",
-    )
+    add_hosts_argument(parser)
     vibevolve_parser.add_argument(
         "--run-id",
         default=str(uuid.uuid1()).split("-")[0],
@@ -66,6 +70,15 @@ def main():
     vibevolve_parser.add_argument("--num-steps", default=1024, type=int)
     vibevolve_parser.add_argument("--temperature", default=3, type=float)
     vibevolve_parser.add_argument("--top-n", default=16, type=int)
+
+    # SelfPlay
+    selfplay_parser = subparsers.add_parser(
+        "selfplay", help="Write new agents with selfplay"
+    )
+    add_num_rounds_per_matchup_argument(selfplay_parser)
+    add_episode_length_argument(selfplay_parser)
+    selfplay_parser.add_argument("--pop-size", default=32, type=int)
+    selfplay_parser.add_argument("--generations", default=64, type=int)
 
     # Benchmark
     subparsers.add_parser("benchmark", help="Benchmark SwarmEnv performance")
@@ -95,6 +108,13 @@ def main():
             num_steps=args.num_steps,
             temperature=args.temperature,
             top_n=args.top_n,
+        )
+    elif args.command == "selfplay":
+        selfplay.run(
+            num_rounds_per_matchup=args.num_rounds_per_matchup,
+            episode_length=args.episode_length,
+            pop_size=args.pop_size,
+            generations=args.generations,
         )
     elif args.command == "benchmark":
         benchmark.run()

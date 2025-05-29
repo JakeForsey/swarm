@@ -10,6 +10,7 @@ dependencies = [
     "jax[cpu]>=0.6.0",
     "matplotlib>=3.10.3",
     "requests>=2.32.3",
+    "rq>=2.3.3",
     "vegafusion>=2.0.2",
     "vl-convert-python>=1.7.0",
 ]
